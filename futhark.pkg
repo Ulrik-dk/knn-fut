@@ -1,0 +1,5 @@
+require {
+  github.com/diku-dk/sorts 0.3.10 #a9a16f410669a08684182e295ff66f48a085a6bc
+  github.com/athas/vector 0.4.5 #70aee3855895f2c9b19f767f4a45dca367f94351
+  github.com/athas/distance 0.2.6 #bdd2e95fcf25df59b8b2e5bbcce32bffb11981df
+}
