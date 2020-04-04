@@ -26,21 +26,20 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
     let l_sz = leaf_size_lb + (num_redist / num_leaves) + (if num_excess > 0 then 1 else 0)
     in (P ++ (replicate num_padding pad_elm), l_sz)
 
+-- TODO: take arbitrary vectors in P and make the tree say something about the dimension
 let build_balanced_tree [n] (P: [n]f32) (h: i32) : ([]f32, []f32) =
     let num_leaves = 2**h
-    let leaf_size = n / num_leaves
     let num_tree_nodes = num_leaves - 1
-    let T_ofs = 0
     let tree = replicate num_tree_nodes 0
-    let seg_cnt = 1
-    let seg_len = n
-    let (tree, P, _, _, _) = loop (tree, P, T_ofs, seg_cnt, seg_len) while seg_len != leaf_size do
-      let sorted = unflatten seg_cnt seg_len P
-                |> map (radix_sort_int f32.num_bits (f32.get_bit))
-      let new_tree_segment = map (\arr -> arr[(seg_len-1) / 2]) sorted :> [seg_cnt]f32
-      let inds = seg_cnt |> iota |> map (+T_ofs)                       :> [seg_cnt]i32
+    let T_ofs = 0
+    let (tree, P, _) = loop (tree, P, T_ofs) for depth < h do
+      let seg_len = n >> depth
+      let seg_cnt = n / seg_len
+      let sorted = unflatten seg_cnt seg_len P |> map (radix_sort_int f32.num_bits (f32.get_bit))
+      let new_tree_segment = map (\arr -> arr[(seg_len-1) / 2]) sorted
+      let inds = seg_cnt |> iota |> map (+T_ofs) :> [seg_cnt]i32 --coerce
       let tree = scatter tree inds new_tree_segment
-      in (tree, (flatten sorted), T_ofs + seg_cnt, seg_cnt*2, seg_len/2)
+      in (tree, (flatten sorted), T_ofs + seg_cnt)
     in (tree, P)
 
 let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
