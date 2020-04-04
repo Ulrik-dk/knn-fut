@@ -28,7 +28,7 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- TODO: take arbitrary vectors in P and make the tree say something about the dimension
 let build_balanced_tree [n] (P: [n]f32) (h: i32) : ([]f32, []f32) =
-    let num_leaves = 2**(h+1)
+    let num_leaves = 1<<(h+1)
     let num_tree_nodes = num_leaves - 1
     let tree = replicate num_tree_nodes 0
     let T_ofs = 0
