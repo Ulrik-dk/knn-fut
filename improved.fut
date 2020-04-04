@@ -15,7 +15,7 @@ let round_down_to_pow_2 (x: i32) : i32 =
 let h_from_l_sz (l_sz: i32) (n: i32) : i32 =
   let num_leaves = n / l_sz
   let h = i32_log2 num_leaves
-  in h
+  in h-1
 
 let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
     let num_default_leaves = n / leaf_size_lb
@@ -28,11 +28,11 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- TODO: take arbitrary vectors in P and make the tree say something about the dimension
 let build_balanced_tree [n] (P: [n]f32) (h: i32) : ([]f32, []f32) =
-    let num_leaves = 2**h
+    let num_leaves = 2**(h+1)
     let num_tree_nodes = num_leaves - 1
     let tree = replicate num_tree_nodes 0
     let T_ofs = 0
-    let (tree, P, _) = loop (tree, P, T_ofs) for depth < h do
+    let (tree, P, _) = loop (tree, P, T_ofs) for depth < (h+1) do
       let seg_len = n >> depth
       let seg_cnt = n / seg_len
       let sorted = unflatten seg_cnt seg_len P |> map (radix_sort_int f32.num_bits (f32.get_bit))
