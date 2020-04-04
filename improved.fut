@@ -58,11 +58,11 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
     --return -1 if processing is done
     --else, return new lidx corresponding to new leaf, and updated stack
 
-let main [n] (Q: f32) (P_1: [n]f32) (leaf_size_lb: i32) =
+let main [n] (Q: f32) (P: [n]f32) (leaf_size_lb: i32) =
     let pad_elm = 999f32
 
     -- pad and shadow out old P and n
-    let (P, leaf_size) = pad P_1 pad_elm leaf_size_lb
+    let (P, leaf_size) = pad P pad_elm leaf_size_lb
     let n = length P
 
     --TODO: return height from pad
