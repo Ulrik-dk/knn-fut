@@ -4,7 +4,7 @@ IMPROVED = improved
 
 default:
 	@$(MAKE) --no-print-directory $(IMPROVED:%=compile_c%)
-	@echo "2f32 [0f32,1,2,3,4,5,6]" |./$(IMPROVED)
+	@echo "2f32 [0f32,1,2,3,4,5,6] 1i32" |./$(IMPROVED)
 
 brute:
 	@$(MAKE) --no-print-directory $(BRUTE:%=compile_c%)

@@ -1,6 +1,6 @@
 open import "lib/github.com/diku-dk/sorts/merge_sort"
 open import "lib/github.com/diku-dk/sorts/radix_sort"
--- open import "lib/github.com/diku-dk/segmented/segmented"
+
 let get 't [n] (inds: [n]i32) (src: []t) : [n]t =
     map (\i -> src[i]) inds
 
@@ -58,9 +58,8 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
     --return -1 if processing is done
     --else, return new lidx corresponding to new leaf, and updated stack
 
-let main [n] (Q: f32) (P_1: [n]f32) =
+let main [n] (Q: f32) (P_1: [n]f32) (leaf_size_lb: i32) =
     let pad_elm = 999f32
-    let leaf_size_lb = 1i32
 
     -- pad and shadow out old P and n
     let (P, leaf_size) = pad P_1 pad_elm leaf_size_lb
@@ -70,7 +69,7 @@ let main [n] (Q: f32) (P_1: [n]f32) =
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
     let lidx = find_natural_leaf Q tree
-    in (leaf_size, h, n, tree, P)
+    in (leaf_size, h, n, tree, P, lidx)
 --    let num_leaves = (length tree) + 1
 --    let visited = replicate num_leaves 0
 --    let stack = 0
