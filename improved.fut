@@ -31,15 +31,14 @@ let build_balanced_tree [n] (P: [n]f32) (h: i32) : ([]f32, []f32) =
     let num_leaves = 1<<(h+1)
     let num_tree_nodes = num_leaves - 1
     let tree = replicate num_tree_nodes 0
-    let T_ofs = 0
-    let (tree, P, _) = loop (tree, P, T_ofs) for depth < (h+1) do
+    let (tree, P) = loop (tree, P) for depth < (h+1) do
       let seg_len = n >> depth
       let seg_cnt = n / seg_len
+      let T_ofs = seg_cnt-1
       let sorted = unflatten seg_cnt seg_len P |> map (radix_sort_float f32.num_bits (f32.get_bit))
-      let new_tree_segment = map (\arr -> arr[(seg_len-1) / 2]) sorted
       let inds = seg_cnt |> iota |> map (+T_ofs) :> [seg_cnt]i32 --coerce
-      let tree = scatter tree inds new_tree_segment
-      in (tree, (flatten sorted), T_ofs + seg_cnt)
+      let tree = scatter tree inds (map (\arr -> arr[(seg_len-1) / 2]) sorted)
+      in (tree, (flatten sorted))
     in (tree, P)
 
 let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
