@@ -35,12 +35,13 @@ let build_balanced_tree [n] (P: [n]f32) (h: i32) : ([]f32, []f32) =
       let seg_len = n >> depth
       let seg_cnt = n / seg_len
       let seg_P = unflatten seg_cnt seg_len P
-      let (sorted, inds, vals) = unzip3 <| map (\(seg, i) ->
+      let (sorted, inds, vals) = unzip3 <| map (\i ->
+                  let seg = seg_P[i]
                   let sorted_seg = radix_sort_float f32.num_bits (f32.get_bit) seg
                   let ind = i + seg_cnt - 1
-                  let var = sorted_seg[(seg_len-1)/2]
-                  in (sorted_seg, ind, var)
-                ) <| zip seg_P (iota seg_cnt)
+                  let value = sorted_seg[(seg_len-1)/2]
+                  in (sorted_seg, ind, value)
+                ) <| iota seg_cnt
       let tree = scatter tree inds vals
       in (tree, (flatten sorted))
     in (tree, P)
