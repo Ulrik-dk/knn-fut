@@ -52,24 +52,25 @@ let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
 
 let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
   (1, stack)
-    -- TODO: take from Cosmins code
-    -- climb to recursionpoint / root
-    -- stop, or climb to new natural leaf
-    --return -1 if processing is done
-    --else, return new lidx corresponding to new leaf, and updated stack
+  -- TODO: take from Cosmins code
+  -- climb to recursionpoint / root
+  -- stop, or climb to new natural leaf
+  -- return -1 if processing is done
+  -- else, return new lidx corresponding to new leaf, and updated stack
 
-let main [n] (Q: f32) (P: [n]f32) (leaf_size_lb: i32) =
-    let pad_elm = 999f32
+let main [n] (Q: f32) (P: [n]f32) (d: i32) (leaf_size_lb: i32) =
+    --let n = nd / d
+    --let P = unflatten n d P
+    let pad_elm = f32.inf
 
     -- pad and shadow out old P and n
     let (P, leaf_size) = pad P pad_elm leaf_size_lb
     let n = length P
 
-    --TODO: return height from pad
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
-    let lidx = find_natural_leaf Q tree
-    in (leaf_size, h, n, tree, P, lidx)
+    --let lidx = find_natural_leaf Q tree
+    in (leaf_size, h, n, tree, P)
 --    let num_leaves = (length tree) + 1
 --    let visited = replicate num_leaves 0
 --    let stack = 0
