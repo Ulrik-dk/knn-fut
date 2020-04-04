@@ -12,7 +12,6 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
-
 -- This is implemented for 1-dim
 -- height: the height of the tree (without leaves)
 -- tree: the k-d tree, denoted `split_values` in Fabian's code
@@ -23,8 +22,7 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
 --         which denotes whether the `second child` of a node has
 --         been visited already
 -- Results: the index of the new leaf and the new stack
---
-let traverseOnce (height: i32) (tree:    []f32) 
+let traverseOnce (height: i32) (tree:    []f32)
                  (querry: f32) (knn:       f32)
                  (last_leaf: i32)
                  -- (stack: i32) : (i32, i32) =
@@ -32,9 +30,9 @@ let traverseOnce (height: i32) (tree:    []f32)
 
   -- trivial functions for reading/writting from the stack,
   --   which is maintained as an array of booleans.
-  let getPackedInd (stk:  []bool) (ind: i32) : bool = stk[ind] 
+  let getPackedInd (stk:  []bool) (ind: i32) : bool = stk[ind]
   let setPackedInd (stk: *[]bool) (ind: i32) (v: bool) : *[]bool =
-     let stk[ind] = v in stk    
+     let stk[ind] = v in stk
 
   let (parent_rec, stack, count, rec_node) =
       loop (node_index, stack, count, rec_node) =
@@ -55,7 +53,7 @@ let traverseOnce (height: i32) (tree:    []f32)
            -- and its second child has been visited
            (-1, stack, 0)
 
-      else loop (node_index, stack, count) = 
+      else loop (node_index, stack, count) =
                 (rec_node, stack, count)
            while !(isLeaf height node_index) do
               -- now traverse downwards by starting at `rec_node`
@@ -83,12 +81,12 @@ entry main (h: i32) (ppl: i32) (q: f32) (knn: f32)=
         let len = 1 << i
         let inds = map (+beg) (iota len)
         let num_leaves_per_parent = num_leaves / len
-        let num_points_per_parent = num_leaves_per_parent * ppl 
+        let num_points_per_parent = num_leaves_per_parent * ppl
         let vals = map (\k -> r32 ((2*k+1) * num_points_per_parent / 2)) (iota len)
         in  scatter tree inds vals
   -- get the querried leaf
   let q_leaf = getQuerriedLeaf h ppl q
-  
+
   let visits = replicate num_leaves (-1)
   let visits[0] = q_leaf
 
@@ -101,7 +99,7 @@ entry main (h: i32) (ppl: i32) (q: f32) (knn: f32)=
         let (new_leaf, stack) =
             traverseOnce h tree_arr q knn last_leaf stack
 
-        let visits = if new_leaf != -1 
+        let visits = if new_leaf != -1
                      then let visits[i+1] = new_leaf in visits
                      else visits
         in  (visits, stack, new_leaf, i+1)
