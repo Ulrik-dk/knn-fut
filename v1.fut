@@ -119,7 +119,7 @@ let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
     in lid - tsz
 
 let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
-  (1, stack)
+  (1i32, stack)
   -- TODO: take from Cosmins code
   -- climb to recursionpoint / root
   -- stop, or climb to new natural leaf
@@ -137,9 +137,9 @@ let main [nd] (Q: f32) (P: [nd]f32) (d: i32) (leaf_size_lb: i32) =
 
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
-    --let lidx = find_natural_leaf Q tree
     let (tree_dims, tree_medians) = unzip tree
     in (leaf_size, h, n, tree_dims, tree_medians, P)
+    --let lidx = find_natural_leaf Q tree
 --    let num_leaves = (length tree) + 1
 --    let visited = replicate num_leaves 0
 --    let stack = 0
@@ -148,3 +148,7 @@ let main [nd] (Q: f32) (P: [nd]f32) (d: i32) (leaf_size_lb: i32) =
 --      let (lidx, stack) = traverse_once Q tree lidx stack
 --      in (visited, stack, lidx)
 --    in visited
+
+-- I dont know how to mix generated and user-defined data in futhark-dataset. The documentation did not help.
+entry test [nd] (P: [nd]f32) =
+  main 1.0f32 P 16i32 256i32
