@@ -29,7 +29,7 @@ let traverseOnce (height: i32) (tree:    []f32)
                  (stack : *[]bool) : (i32, []bool) =
 
   -- trivial functions for reading/writting from the stack,
-  --   which is maintained as an array of booleans.
+  -- which is maintained as an array of booleans.
   let getPackedInd (stk:  []bool) (ind: i32) : bool = stk[ind]
   let setPackedInd (stk: *[]bool) (ind: i32) (v: bool) : *[]bool =
      let stk[ind] = v in stk
@@ -38,15 +38,12 @@ let traverseOnce (height: i32) (tree:    []f32)
       loop (node_index, stack, count, rec_node) =
            (last_leaf, stack, height, -1)
             while (node_index != 0) && (rec_node < 0) do
-                -- go up the tree (and back on the stack) and find the new
-                -- parent whose `second` child was not visited AND its `second`
-                -- child satisfies the median condition (hence at least one
-                -- of its leaves need to be visited). The parent is saved
-                -- in `parent_rec`, the `second` satisfying child in `rec_node`
-                -- If root has been reached and its `second` has been visited
-                -- then `parent_rec` is the root and `rec_node` is -1 by convention.
-                -- ... Fill in the blanks ...
-
+                let parent_node = getParent(node_index)
+                let second_child = ((node_index+1)%2) + parent_node*2
+                let rec_node =                -- TODO: replace MEDIAN_CONDITION
+                  if (!getPackedInd(stack, parent_node) && MEDIAN_CONDITION)
+                  then second_child else rec_node
+            in (parent_node, stack, count-1, rec_node)
   let (new_leaf, stack, _) =
       if parent_rec == 0 && rec_node == -1
       then -- we are done, we are at the root node
