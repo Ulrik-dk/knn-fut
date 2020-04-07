@@ -74,13 +74,13 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the point indices for this segment
       let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
 
+      -- the actual points in this segment
+      let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
+
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
 
-          -- the actual points in this segment
-          let my_seg = gather1d my_seg_Pindss[i] P
-
           -- TODO: Make reduces commutative
-          let my_seg_T = transpose my_seg
+          let my_seg_T = transpose my_segs[i]
           let mins = map (\row -> reduce f32.min f32.highest row) my_seg_T |> intrinsics.opaque
           let maxs = map (\row -> reduce my_maxf32 (row[0]) row) my_seg_T
 
@@ -95,9 +95,9 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                                     else (dif2, i2)
                              ) (f32.lowest, -1i32) (zip difs (iota d))
 
-          -- dim_ind values and global indices of my_seg, sorted by the values
+          -- dim_ind values and global indices of my_segs, sorted by the values
           --TODO: FIXME
-          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_seg) my_seg_Pindss[i]
+          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_segs[i]) my_seg_Pindss[i]
                                 |> radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit)
                                 |> unzip
 
