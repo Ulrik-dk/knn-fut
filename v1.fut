@@ -83,20 +83,20 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       let minss = map (\i -> map (\row -> reduce f32.min f32.highest row) my_seg_Ts[i] |> intrinsics.opaque ) <| iota seg_cnt
       let maxss = map (\i -> map (\row -> reduce my_maxf32 (row[0]) row) my_seg_Ts[i]) <| iota seg_cnt
 
+
+      -- the vector of differences between the mins and maxs
+      let difss = map (\i -> map2(-) minss[i] maxss[i]) <| iota seg_cnt
+
       -- map (\i -> ) <| iota seg_cnt
 
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
-
-          -- the vector of differences between the mins and maxs
-          let difs = map2(-) minss[i] maxss[i]
-
           -- the index of the dimension with highest difference between max and min
           -- TODO: make this more elegant
           let (_, dim_ind) = reduce (\(dif1, i1) (dif2, i2) ->
                                   if(dif1 > dif2)
                                     then (dif1, i1)
                                     else (dif2, i2)
-                             ) (f32.lowest, -1i32) (zip difs (iota d))
+                             ) (f32.lowest, -1i32) (zip difss[i] (iota d))
 
           -- dim_ind values and global indices of my_segs, sorted by the values
           --TODO: FIXME
