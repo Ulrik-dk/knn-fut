@@ -71,6 +71,11 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the dim-median pairs themselves
       -- and the new ordering of the indices for the points
 
+      --TODO: take all these distributed things and combine them.
+      -- some are only needed for making dim_inds/a few others,
+      -- which can be the return-values
+      -- for one big map over iota seg_cnt
+
       -- the point indices for this segment
       let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
 
@@ -95,13 +100,14 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                                 else (dif2, i2)
                               ) (f32.lowest, -1i32) (zip difss[i] (iota d))
                           ) <| iota seg_cnt
-
       -- map (\i -> ) <| iota seg_cnt
 
+      --batch_merge_sort (largest: t) ((<=): t -> t -> bool) (xss: [m][n]t)
+
+      let zipped_value_indss = map (\i -> zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
+
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
-          --TODO: FIXME
-          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i]
-                                |> radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit)
+          let (s_vals, s_inds) = radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit) zipped_value_indss[i]
                                 |> unzip
 
           -- median value picked from sorted values
