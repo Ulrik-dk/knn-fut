@@ -70,13 +70,14 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- creates the indices into the tree for each new dim-median pair
       -- the dim-median pairs themselves
       -- and the new ordering of the indices for the points
+
+      -- the point indices for this segment
+      let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
+
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
 
-          -- the point indices for this segment
-          let my_seg_Pinds = seg_Pinds[i]
-
           -- the actual points in this segment
-          let my_seg = gather1d my_seg_Pinds P
+          let my_seg = gather1d my_seg_Pindss[i] P
 
           -- TODO: Make reduces commutative
           let my_seg_T = transpose my_seg
@@ -96,7 +97,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
 
           -- dim_ind values and global indices of my_seg, sorted by the values
           --TODO: FIXME
-          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_seg) my_seg_Pinds
+          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_seg) my_seg_Pindss[i]
                                 |> radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit)
                                 |> unzip
 
