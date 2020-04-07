@@ -1,8 +1,18 @@
 open import "lib/github.com/diku-dk/sorts/merge_sort"
 open import "lib/github.com/diku-dk/sorts/radix_sort"
+open import "lib/batch-merge-sort"
 
-let get 't [n] (inds: [n]i32) (src: []t) : [n]t =
-    map (\i -> src[i]) inds
+-- anonymous dimensions so we can gather less than all src elms
+let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
+  map (\i -> src[i]) inds
+
+let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
+  map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
+
+let my_maxf32 (a: f32) (b: f32) =
+    if f32.isinf a then b
+    else if f32.isinf b then a
+    else f32.max a b
 
 let i32_log2 (x: i32) : i32 =
   i32.f32 <| f32.log2 <| f32.i32 x
@@ -66,12 +76,12 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
           let my_seg_Pinds = seg_Pinds[i]
 
           -- the actual points in this segment
-          let my_seg = get my_seg_Pinds P
+          let my_seg = gather1d my_seg_Pinds P
 
-          -- the vectors with the minimal and maximal values for each dimension, collected
-          -- from the my_seg points
-          let mins = reduce (\A B -> zip A B |> map(\(a, b) -> f32.min a b)) (replicate d f32.lowest) my_seg
-          let maxs = reduce (\A B -> zip A B |> map(\(a, b) -> f32.max a b)) (replicate d f32.highest) my_seg
+          -- TODO: Make reduces commutative
+          let my_seg_T = transpose my_seg
+          let mins = map (\row -> reduce f32.min f32.highest row) my_seg_T |> intrinsics.opaque
+          let maxs = map (\row -> reduce my_maxf32 (row[0]) row) my_seg_T
 
           -- the vector of differences between the mins and maxs
           let difs = map2(-) mins maxs
@@ -85,6 +95,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                              ) (f32.lowest, -1i32) (zip difs (iota d))
 
           -- dim_ind values and global indices of my_seg, sorted by the values
+          --TODO: FIXME
           let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_seg) my_seg_Pinds
                                 |> radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit)
                                 |> unzip
