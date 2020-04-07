@@ -106,17 +106,21 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
 
       let zipped_value_indss = map (\i -> zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
 
-      let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
-          let (s_vals, s_inds) = radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit) zipped_value_indss[i]
-                                |> unzip
+      let sort_results = batch_merge_sort (f32.highest, seg_len) (\a b -> a.0 <= b.0) zipped_value_indss :> [seg_cnt][seg_len](f32, i32)
 
+      let flattened = flatten sort_results
+      let (flat_s_valss, flat_s_indss) = unzip flattened
+      let s_valss = unflatten seg_cnt seg_len flat_s_valss
+      let s_indss = unflatten seg_cnt seg_len flat_s_indss
+
+      let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
           -- median value picked from sorted values
-          let median = s_vals[(seg_len-1)/2]
+          let median = s_valss[i,(seg_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
           -- TODO: is this correct?
           let t_ind = i + seg_cnt - 1
-          in (t_ind, (dim_inds[i], median), s_inds)
+          in (t_ind, (dim_inds[i], median), s_indss[i])
         ) <| iota seg_cnt
 
       -- putting the new tree-medians and dimensions onto the tree
