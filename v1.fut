@@ -79,15 +79,16 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
 
       let my_seg_Ts = map (\i -> transpose my_segs[i]) <| iota seg_cnt
 
+      -- TODO: Make reduces commutative
+      let minss = map (\i -> map (\row -> reduce f32.min f32.highest row) my_seg_Ts[i] |> intrinsics.opaque ) <| iota seg_cnt
+      let maxss = map (\i -> map (\row -> reduce my_maxf32 (row[0]) row) my_seg_Ts[i]) <| iota seg_cnt
+
       -- map (\i -> ) <| iota seg_cnt
 
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
-          -- TODO: Make reduces commutative
-          let mins = map (\row -> reduce f32.min f32.highest row) my_seg_Ts[i] |> intrinsics.opaque
-          let maxs = map (\row -> reduce my_maxf32 (row[0]) row) my_seg_Ts[i]
 
           -- the vector of differences between the mins and maxs
-          let difs = map2(-) mins maxs
+          let difs = map2(-) minss[i] maxss[i]
 
           -- the index of the dimension with highest difference between max and min
           -- TODO: make this more elegant
