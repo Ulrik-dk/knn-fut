@@ -83,24 +83,24 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       let minss = map (\i -> map (\row -> reduce f32.min f32.highest row) my_seg_Ts[i] |> intrinsics.opaque ) <| iota seg_cnt
       let maxss = map (\i -> map (\row -> reduce my_maxf32 (row[0]) row) my_seg_Ts[i]) <| iota seg_cnt
 
-
       -- the vector of differences between the mins and maxs
       let difss = map (\i -> map2(-) minss[i] maxss[i]) <| iota seg_cnt
+
+      -- the index of the dimension with highest difference between max and min
+      -- TODO: make this more elegant
+      let (_, dim_inds) = unzip <| map (\i ->
+                            reduce (\(dif1, i1) (dif2, i2) ->
+                              if(dif1 > dif2)
+                                then (dif1, i1)
+                                else (dif2, i2)
+                              ) (f32.lowest, -1i32) (zip difss[i] (iota d))
+                          ) <| iota seg_cnt
 
       -- map (\i -> ) <| iota seg_cnt
 
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
-          -- the index of the dimension with highest difference between max and min
-          -- TODO: make this more elegant
-          let (_, dim_ind) = reduce (\(dif1, i1) (dif2, i2) ->
-                                  if(dif1 > dif2)
-                                    then (dif1, i1)
-                                    else (dif2, i2)
-                             ) (f32.lowest, -1i32) (zip difss[i] (iota d))
-
-          -- dim_ind values and global indices of my_segs, sorted by the values
           --TODO: FIXME
-          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_ind]) my_segs[i]) my_seg_Pindss[i]
+          let (s_vals, s_inds) = zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i]
                                 |> radix_sort_float_by_key (.0) f32.num_bits (f32.get_bit)
                                 |> unzip
 
@@ -110,7 +110,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
           -- index to place this median-value/dim-ind pair into the tree
           -- TODO: is this correct?
           let t_ind = i + seg_cnt - 1
-          in (t_ind, (dim_ind, median), s_inds)
+          in (t_ind, (dim_inds[i], median), s_inds)
         ) <| iota seg_cnt
 
       -- putting the new tree-medians and dimensions onto the tree
