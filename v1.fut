@@ -81,10 +81,20 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- and the new ordering of the indices for the points
 
       -- the point indices for this segment
-      let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
+      -- COSMIN: this is map with identity, why? 
+      -- let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
+      let my_seg_Pindss = seg_Pinds
 
       -- the actual points in this segment
-      let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
+      -- COSMIN: this is a performance bug as it does not exploits
+      --         the inner parallelism of size d; fixed below; please
+      --         verify that it is correct.
+      -- let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
+      let my_segs = map (\sgm_inds -> 
+                            map (\ind -> 
+                                    map (\j -> P[ind, j]) (iota d)
+                                ) sgm_inds
+                        ) my_seg_Pindss
 
       -- for every segment, the dimension chosen
       let (_, dim_inds) =
@@ -93,7 +103,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                     let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
                     let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
-                    let difs = map2(-) mins maxs
+                    let difs = map2(-) mins maxs |> intrinsics.opaque
                     in reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
@@ -104,25 +114,36 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
 
       -- the index is only a passanger, so the value we put in the neutral element does not matter
-      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, -1) (\a b -> a.0 <= b.0) valss_indss
+      -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
+      --         pads to a power of two: you need to make sure they are ordered at the end!
+      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len) 
+                                                                (\(a,i1) (b,i2) -> if a < b then true  else
+                                                                                   if a > b then false else
+                                                                                   i1 <= i2
+                                                                ) valss_indss
 
-      let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
+      -- COSMIN: the map below was also returning sPinds which was essentially s_indss,
+      --         and also the dim_inds. I have removed them from the map as they are
+      --         redundant computation.
+      let sPinds = s_indss
+      let (t_inds, dims_medians) = unzip <| map (\i ->
           -- median value picked from sorted values
           let median = s_valss[i,(seg_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
-          let t_ind = i + seg_cnt - 1 -- FIXME: is this correct?
-          in (t_ind, (dim_inds[i], median), s_indss[i])
+          let t_ind = i + seg_cnt - 1 -- FIXME: is this correct? COSMIN: looks correct
+          in (t_ind, median)
         ) <| iota seg_cnt
 
       -- putting the new tree-medians and dimensions onto the tree
-      let tree = scatter tree t_inds dims_medians
+      let tree = scatter tree t_inds (zip dim_inds dims_medians)
 
       -- continuing the loop
       in (tree, (flatten sPinds))
 
     -- "sorts" the points P such that they now align with the new ordering of the inds
-    let reordered_P = gather1d Pinds P 
+    -- COSMIN: use gather2D here to utilize also the inner parallelism of size d!
+    let reordered_P = gather2d (Pinds :> [n]i32) P
 
     -- returns the tree and the reordered points
     in (tree, reordered_P)
