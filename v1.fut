@@ -90,9 +90,9 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       let (_, dim_inds) =
                   unzip <|
                   map (\i ->
-                    let my_seg_T = transpose my_segs[i]
+                    let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
                     let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
-                    let maxs = map (\row -> reduce_comm my_maxf32 (row[0]) row) my_seg_T
+                    let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
                     let difs = map2(-) mins maxs
                     in reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
@@ -143,9 +143,20 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
   -- return -1 if processing is done
   -- else, return new lidx corresponding to new leaf, and updated stack
 
-let main [nd] (Q: f32) (P: [nd]f32) (d: i32) (leaf_size_lb: i32) =
-    let n = nd / d
-    let P = unflatten n d P
+-- ==
+-- entry: main
+--
+-- compiled random input { 256i32 [8388608][8]f32 }
+-- compiled random input { 256i32 [2097152][16]f32 }
+-- compiled random input { 256i32 [8388608][16]f32 }
+-- compiled random input { 256i32 [1048576][16]f32 }
+
+-- execute with: 
+-- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -t /dev/stderr > /dev/null
+-- for profiling:
+-- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
+--
+entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
     let pad_elm = replicate d f32.inf
 
     -- pad and shadow out old P and n
@@ -167,5 +178,5 @@ let main [nd] (Q: f32) (P: [nd]f32) (d: i32) (leaf_size_lb: i32) =
 --    in visited
 
 -- I dont know how to mix generated and user-defined data in futhark-dataset. The documentation did not help.
-entry test [nd] (P: [nd]f32) =
-  main 1.0f32 P 16i32 256i32
+entry test [n][d] (P: [n][d]f32) =
+  main 256i32 P
