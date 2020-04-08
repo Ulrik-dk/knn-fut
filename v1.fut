@@ -82,16 +82,15 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the actual points in this segment
       let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
 
-      -- TODO: Make reduces commutative
       -- the vector of differences between the mins and maxs
       let (_, dim_inds) =
                   unzip <|
                   map (\i ->
                     let my_seg_T = transpose my_segs[i]
-                    let mins = map (\row -> reduce f32.min f32.highest row) my_seg_T |> intrinsics.opaque
-                    let maxs = map (\row -> reduce my_maxf32 (row[0]) row) my_seg_T
+                    let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
+                    let maxs = map (\row -> reduce_comm my_maxf32 (row[0]) row) my_seg_T
                     let difs = map2(-) mins maxs
-                    in reduce (\(dif1, i1) (dif2, i2) ->
+                    in reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
                         else (dif2, i2)
