@@ -40,14 +40,10 @@ let traverseOnce (height: i32) (tree:    []f32)
             while (node_index != 0) && (rec_node < 0) do
                 let parent_node = getParent(node_index)
                 let second_child = ((node_index+1)%2) + parent_node*2
-                -- TODO: replace MEDIAN_CONDITION
-                let rec_node =
-                  if (!(getPackedInd stack count) && MEDIAN_CONDITION)
-                  then second_child
-                  else rec_node
-                in (parent_node, stack, count-1, rec_node)
-                --TODO: should the stack be updated when we climb? Set to false?
-                --TODO: set the stack to "true" when it has decided on a recursionpoint
+                                                            --FIXME: parent_node or node_index?
+                in if (!(getPackedInd stack count) && abs(querry - tree[parent_node]) < knn)
+                  then (parent_node, stack, count-1, second_child)
+                  else (parent_node, stack, count-1, rec_node)
   let (new_leaf, stack, _) =
       if parent_rec == 0 && rec_node == -1
       then -- we are done, we are at the root node
