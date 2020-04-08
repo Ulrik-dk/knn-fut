@@ -9,6 +9,12 @@ let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
 let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
   map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
 
+let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
+  let nm = n*m
+  let flat = flatten A :> [nm](t1, t2)
+  let (A_1, A_2) = unzip flat
+  in (unflatten n m A_1, unflatten n m A_2)
+
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
     else if f32.isinf b then a
@@ -56,6 +62,9 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
     -- building the tree and sorting the inds of the points in a loop,
     -- one loop for every level of the tree
     let (tree, Pinds) = loop (tree, Pinds) for depth < (h+1) do
+      -- each segment corresponds to the set of points split by a
+      -- given node at the current level, and we look at that segment
+      -- in order to create the node
 
       -- the length of the segment in each node at the current level
       let seg_len = n >> depth
@@ -97,16 +106,9 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                       ) (f32.lowest, -1i32) (zip difs (iota d))
                   ) <| iota seg_cnt
 
-      -- the index of the dimension with highest difference between max and min
+      let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
 
-      let zipped_value_indss = map (\i -> zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
-
-      let sort_results = batch_merge_sort (f32.highest, seg_len) (\a b -> a.0 <= b.0) zipped_value_indss :> [seg_cnt][seg_len](f32, i32)
-
-      let flattened = flatten sort_results
-      let (flat_s_valss, flat_s_indss) = unzip flattened
-      let s_valss = unflatten seg_cnt seg_len flat_s_valss
-      let s_indss = unflatten seg_cnt seg_len flat_s_indss
+      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len) (\a b -> a.0 <= b.0) valss_indss
 
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
           -- median value picked from sorted values
