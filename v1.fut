@@ -80,18 +80,13 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the dim-median pairs themselves
       -- and the new ordering of the indices for the points
 
-      --TODO: take all these distributed things and combine them.
-      -- some are only needed for making dim_inds/a few others,
-      -- which can be the return-values
-      -- for one big map over iota seg_cnt
-
       -- the point indices for this segment
       let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
 
       -- the actual points in this segment
       let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
 
-      -- the vector of differences between the mins and maxs
+      -- for every segment, the dimension chosen
       let (_, dim_inds) =
                   unzip <|
                   map (\i ->
@@ -108,15 +103,15 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
 
       let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
 
-      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len) (\a b -> a.0 <= b.0) valss_indss
+      -- the index is only a passanger, so the value we put in the neutral element does not matter
+      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, -1) (\a b -> a.0 <= b.0) valss_indss
 
       let (t_inds, dims_medians, sPinds) = unzip3 <| map (\i ->
           -- median value picked from sorted values
           let median = s_valss[i,(seg_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
-          -- TODO: is this correct?
-          let t_ind = i + seg_cnt - 1
+          let t_ind = i + seg_cnt - 1 -- FIXME: is this correct?
           in (t_ind, (dim_inds[i], median), s_indss[i])
         ) <| iota seg_cnt
 
@@ -127,7 +122,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       in (tree, (flatten sPinds))
 
     -- "sorts" the points P such that they now align with the new ordering of the inds
-    let reordered_P = map(\i -> P[i]) Pinds
+    let reordered_P = gather1d Pinds P 
 
     -- returns the tree and the reordered points
     in (tree, reordered_P)
