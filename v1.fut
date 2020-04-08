@@ -82,27 +82,23 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the actual points in this segment
       let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
 
-      let my_seg_Ts = map (\i -> transpose my_segs[i]) <| iota seg_cnt
-
       -- TODO: Make reduces commutative
-      let minss = map (\i -> map (\row -> reduce f32.min f32.highest row) my_seg_Ts[i] |> intrinsics.opaque ) <| iota seg_cnt
-      let maxss = map (\i -> map (\row -> reduce my_maxf32 (row[0]) row) my_seg_Ts[i]) <| iota seg_cnt
-
       -- the vector of differences between the mins and maxs
-      let difss = map (\i -> map2(-) minss[i] maxss[i]) <| iota seg_cnt
+      let (_, dim_inds) =
+                  unzip <|
+                  map (\i ->
+                    let my_seg_T = transpose my_segs[i]
+                    let mins = map (\row -> reduce f32.min f32.highest row) my_seg_T |> intrinsics.opaque
+                    let maxs = map (\row -> reduce my_maxf32 (row[0]) row) my_seg_T
+                    let difs = map2(-) mins maxs
+                    in reduce (\(dif1, i1) (dif2, i2) ->
+                      if(dif1 > dif2)
+                        then (dif1, i1)
+                        else (dif2, i2)
+                      ) (f32.lowest, -1i32) (zip difs (iota d))
+                  ) <| iota seg_cnt
 
       -- the index of the dimension with highest difference between max and min
-      -- TODO: make this more elegant
-      let (_, dim_inds) = unzip <| map (\i ->
-                            reduce (\(dif1, i1) (dif2, i2) ->
-                              if(dif1 > dif2)
-                                then (dif1, i1)
-                                else (dif2, i2)
-                              ) (f32.lowest, -1i32) (zip difss[i] (iota d))
-                          ) <| iota seg_cnt
-      -- map (\i -> ) <| iota seg_cnt
-
-      --batch_merge_sort (largest: t) ((<=): t -> t -> bool) (xss: [m][n]t)
 
       let zipped_value_indss = map (\i -> zip (map(\vect -> vect[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
 
