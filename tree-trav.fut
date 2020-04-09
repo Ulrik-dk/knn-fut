@@ -29,24 +29,23 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
 let traverseOnce (height: i32) (tree:    []f32)
                  (query: f32) (knn:       f32)
                  (last_leaf: i32)
-                 -- (stack: i32) : (i32, i32) =
-                 (stack : *[]bool) : (i32, []bool) =
+                 (stack: i32) : (i32, i32) =
 
   -- trivial functions for reading/writting from the stack,
   -- which is maintained as an array of booleans.
   --TODO: make stk be an integer
-  let getPackedInd (stk:  []bool) (level: i32) : bool = stk[level]
-  let setPackedInd (stk: *[]bool) (level: i32) (v: bool) : *[]bool =
-     let stk[level] = v in stk
+  let getPackedInd (stk: i32) (level: i32) : bool =
+    i32.get_bit level stk |> (>0)
+  let setPackedInd (stk: i32) (level: i32) (v: bool) : i32 =
+    i32.set_bit level stk (if v then 1 else 0)
 
   -- level is actually that of parent_index into the stack?
-  let (parent_rec, stack, level, rec_node) =
+  let (parent_rec, stack, _, rec_node) =
       loop (node_index, stack, level, rec_node) =
            (last_leaf, stack, height, -1)
             while (node_index != 0) && (rec_node < 0) do
                 let parent_index = getParent node_index
                 let sibling_index = getSibling node_index
-                     --FIXME: should this check level-1?  --FIXME: sibling_index or parent_index or node_index?
                 in if (!(getPackedInd stack level) && f32.abs(query - tree[parent_index]) < knn)
                   then (parent_index, setPackedInd stack level true, level, sibling_index)
                   else (parent_index, setPackedInd stack level false, level-1, rec_node)
@@ -88,10 +87,9 @@ entry main (h: i32) (ppl: i32) (q: f32) (knn: f32)=
   let visits[0] = q_leaf
 
   -- propagate the query `q` through the tree
-  let stack = replicate (h+1) false
   let (visits, _, _, loop_count) =
       loop (visits, stack, last_leaf, i) =
-           (visits, stack, q_leaf, 0)
+           (visits, 0, q_leaf, 0)
          --(visits, 0i32, q_leaf, 0)
       while last_leaf != -1 do
         let (new_leaf, stack) =
