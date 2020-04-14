@@ -33,7 +33,6 @@ let traverseOnce (height: i32) (tree:    []f32)
 
   -- trivial functions for reading/writting from the stack,
   -- which is maintained as an array of booleans.
-  --TODO: make stk be an integer
   let getPackedInd (stk: i32) (level: i32) : bool =
     i32.get_bit level stk |> (>0)
   let setPackedInd (stk: i32) (level: i32) (v: bool) : i32 =
@@ -88,16 +87,16 @@ entry main (h: i32) (ppl: i32) (q: f32) (knn: f32)=
 
   -- propagate the query `q` through the tree
   let (visits, _, _, loop_count) =
-      loop (visits, stack, last_leaf, i) =
-           (visits, 0, q_leaf, 0)
-         --(visits, 0i32, q_leaf, 0)
-      while last_leaf != -1 do
-        let (new_leaf, stack) =
-            traverseOnce h tree_arr q knn last_leaf stack
+    loop (visits, stack, last_leaf, i) =
+         (visits, 0, q_leaf, 0)
+       --(visits, 0i32, q_leaf, 0)
+    while last_leaf != -1 do
+      let (new_leaf, stack) =
+          traverseOnce h tree_arr q knn last_leaf stack
 
-        let visits = if new_leaf != -1
-                     then let visits[i+1] = new_leaf in visits
-                     else visits
-        in  (visits, stack, new_leaf, i+1)
+      let visits = if new_leaf != -1
+                   then let visits[i+1] = new_leaf in visits
+                   else visits
+      in  (visits, stack, new_leaf, i+1)
 
   in (tree_arr, visits, loop_count)
