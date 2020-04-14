@@ -1,7 +1,7 @@
 v1:
 	@futhark c v1.fut
-	@echo "2f32 [[0f32,1],[2,3],[4,5],[6,7],[1,2],[4,3],[2,1]] 2i32 1i32" |./v1
-	@rm -rf v1 v1.c
+	@echo "2i32 [[0f32,1],[2,3],[4,5],[6,7],[1,2],[4,3],[2,1]]" |./v1
+	rm v1 v1.c
 
 v1-test:
 	futhark dataset -b --generate=[134217728]f32 > v1.in
