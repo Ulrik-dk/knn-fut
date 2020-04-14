@@ -46,7 +46,7 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
 -- returns ________________
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32) =
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32) =
 
     -- the number of leaves is determined from the height
     let num_leaves = 1<<(h+1)
@@ -58,7 +58,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
     let num_tree_nodes = num_leaves - 1
 
     -- the tree itself, empty to begin with
-    let tree = zip (replicate num_tree_nodes 0i32) (replicate num_tree_nodes 0.0f32)
+    let tree = zip4 (replicate num_tree_nodes 0i32) (replicate num_tree_nodes 0.0f32) (replicate num_tree_nodes 0.0f32) (replicate num_tree_nodes 0.0f32)
 
     -- building the tree and sorting the inds of the points in a loop,
     -- one loop for every level of the tree
@@ -97,19 +97,20 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
                                 ) sgm_inds
                         ) my_seg_Pindss
 
-      -- for every segment, the dimension chosen
-      let (_, dim_inds) =
-                  unzip <|
+      -- for every segment, the dimension chosen, and the upper and lower bounds for that dimension
+      let (dim_inds, ubs, lbs) =
+                  unzip3 <|
                   map (\i ->
                     let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
                     let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
                     let difs = map2(-) mins maxs |> intrinsics.opaque
-                    in reduce_comm (\(dif1, i1) (dif2, i2) ->
+                    let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
                         else (dif2, i2)
                       ) (f32.lowest, -1i32) (zip difs (iota d))
+                    in (dim_ind, maxs[dim_ind], mins[dim_ind])
                   ) <| iota seg_cnt
 
       let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
@@ -137,7 +138,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
         ) <| iota seg_cnt
 
       -- putting the new tree-medians and dimensions onto the tree
-      let tree = scatter tree t_inds (zip dim_inds dims_medians)
+      let tree = scatter tree t_inds (zip4 dim_inds dims_medians ubs lbs)
 
       -- continuing the loop
       in (tree, (flatten sPinds))
@@ -187,8 +188,8 @@ entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
 
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
-    let (tree_dims, tree_medians) = unzip tree
-    in (leaf_size, h, n, tree_dims, tree_medians, P)
+    let (tree_dims, tree_medians, tree_ubs, tree_lbs) = unzip4 tree
+    in (leaf_size, h, n, P, tree_dims, tree_medians, tree_ubs, tree_lbs)
     --let lidx = find_natural_leaf Q tree
 --    let num_leaves = (length tree) + 1
 --    let visited = replicate num_leaves 0
