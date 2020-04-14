@@ -44,7 +44,6 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
--- returns ________________
 let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32) =
 
     -- the number of leaves is determined from the height
@@ -135,13 +134,28 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     -- returns the tree and the reordered points
     in (tree, reordered_P)
 
-let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
-    let lid = 0
-    let lid = loop lid while (lid < tsz) do
-      if (Q <= tree[lid])
-        then (lid*2)+1
-        else (lid*2)+2
-    in lid - tsz
+----------- traversal ----------
+
+let getParent (node_index: i32) = (node_index-1) / 2
+-- uneven node indices are left-children, even are right-children
+let getLeftChild (node_index: i32) = (node_index * 2) + 1
+let getRightChild (node_index: i32) = (node_index * 2) + 2
+let getSibling (node_index: i32) = if (node_index%2==0) then node_index-1 else node_index+1
+
+let isLeaf (h: i32) (node_index: i32) = node_index >= (1 << (h+1)) - 1
+
+let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
+    let leaf_ind = (t32 q) / ppl
+    in  leaf_ind + (1<<(h+1)) - 1
+
+-- TODO: modify to use arbitrary dimensions
+let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_medians: [tsz]f32) : i32 =
+    let i = 0
+    let i = loop i while (i < tsz) do
+      if (q[tree_dims[i]] <= tree_medians[i])
+        then (i*2)+1
+        else (i*2)+2
+    in i - tsz
 
 let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
   (1i32, stack)
@@ -163,7 +177,7 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
 
-entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
+entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32)=
     let pad_elm = replicate d f32.inf
 
     -- pad and shadow out old P and n
@@ -173,16 +187,16 @@ entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
     let (tree_dims, tree_medians, tree_ubs, tree_lbs) = unzip4 tree
-    in (leaf_size, h, n, P, tree_dims, tree_medians, tree_ubs, tree_lbs)
-    --let lidx = find_natural_leaf Q tree
---    let num_leaves = (length tree) + 1
---    let visited = replicate num_leaves 0
---    let stack = 0
---    let (visited, _, _) = loop (visited, stack, lidx) while (lidx != -1) do
---      let visited = visited with [lidx] = 1
---      let (lidx, stack) = traverse_once Q tree lidx stack
---      in (visited, stack, lidx)
---    in visited
+    let lidxs = map (\q -> find_natural_leaf q tree_dims tree_medians) Q
+    let num_leaves = (length tree) + 1
+    let visited = replicate num_leaves 0i32
+    let stack = replicate m 0i32
+    --let (visited, _, _) = loop (visited, stack, lidx) while (lidx != -1) do
+    --  let visited = visited with [lidx] = 1
+    --  let (lidx, stack) = traverse_once Q tree lidx stack
+    --  in (visited, stack, lidx)
+    --in visited
+    in lidxs
 
 entry test [n][d] (P: [n][d]f32) =
   main 256i32 P
