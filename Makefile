@@ -1,6 +1,6 @@
 v1:
 	@futhark c v1.fut
-	@echo "2f32 [0f32,1,2,3,4,5,6,7,1,2,4,3,2,1] 2i32 1i32" |./v1
+	@echo "2f32 [[0f32,1],[2,3],[4,5],[6,7],[1,2],[4,3],[2,1]] 2i32 1i32" |./v1
 	@rm -rf v1 v1.c
 
 v1-test:
@@ -19,3 +19,4 @@ paper:
 tree-trav:
 	@futhark c tree-trav.fut
 	@echo "3 1024 8024.0f32 3000.0f32" |./tree-trav
+	@rm -rf tree-trav tree-trav.c

@@ -9,6 +9,7 @@ let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
 let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
   map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
 
+-- todo: map unzip
 let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
   let nm = n*m
   let flat = flatten A :> [nm](t1, t2)
@@ -81,7 +82,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- and the new ordering of the indices for the points
 
       -- the point indices for this segment
-      -- COSMIN: this is map with identity, why? 
+      -- COSMIN: this is map with identity, why?
       -- let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
       let my_seg_Pindss = seg_Pinds
 
@@ -90,8 +91,8 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       --         the inner parallelism of size d; fixed below; please
       --         verify that it is correct.
       -- let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
-      let my_segs = map (\sgm_inds -> 
-                            map (\ind -> 
+      let my_segs = map (\sgm_inds ->
+                            map (\ind ->
                                     map (\j -> P[ind, j]) (iota d)
                                 ) sgm_inds
                         ) my_seg_Pindss
@@ -116,7 +117,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32), [][]f32)
       -- the index is only a passanger, so the value we put in the neutral element does not matter
       -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
       --         pads to a power of two: you need to make sure they are ordered at the end!
-      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len) 
+      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len)
                                                                 (\(a,i1) (b,i2) -> if a < b then true  else
                                                                                    if a > b then false else
                                                                                    i1 <= i2
@@ -172,7 +173,7 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
 -- compiled random input { 256i32 [8388608][16]f32 }
 -- compiled random input { 256i32 [1048576][16]f32 }
 
--- execute with: 
+-- execute with:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -t /dev/stderr > /dev/null
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
@@ -198,6 +199,5 @@ entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
 --      in (visited, stack, lidx)
 --    in visited
 
--- I dont know how to mix generated and user-defined data in futhark-dataset. The documentation did not help.
 entry test [n][d] (P: [n][d]f32) =
   main 256i32 P
