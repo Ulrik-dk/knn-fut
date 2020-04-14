@@ -149,20 +149,46 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     in  leaf_ind + (1<<(h+1)) - 1
 
 -- TODO: modify to use arbitrary dimensions
-let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_medians: [tsz]f32) : i32 =
+let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_meds: [tsz]f32) : i32 =
     let i = 0
     let i = loop i while (i < tsz) do
-      if (q[tree_dims[i]] <= tree_medians[i])
+      if (q[tree_dims[i]] <= tree_meds[i])
         then (i*2)+1
         else (i*2)+2
     in i - tsz
 
-let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
-  (1i32, stack)
-  -- climb to recursionpoint / root
-  -- stop, or climb to new natural leaf
-  -- return -1 if processing is done
-  -- else, return new lidx corresponding to new leaf, and updated stack
+-- for one query - should be used in a map
+let traverse_once [tsz][d] (h: i32)
+                           (q: [d]f32)
+                           (stack: i32)
+                           (lidx: i32) -- last leaf index
+                           (wnnd: f32) -- worst nearest neighbor distance
+                           (tree: [tsz](i32, f32, f32, f32)) =
+  let getPackedInd (stk: i32) (level: i32) : bool =
+    i32.get_bit level stk |> (>0)
+  let setPackedInd (stk: i32) (level: i32) (v: bool) : i32 =
+    i32.set_bit level stk (if v then 1 else 0)
+
+  let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
+  let (parent_rec, stack, _, rec_node) =
+    loop (node_index, stack, level, rec_node) =
+         (lidx,       stack, h,     -1)
+          while (node_index != 0) && (rec_node < 0) do
+              let parent_index = getParent node_index
+              let sibling_index = getSibling node_index
+              in if (!(getPackedInd stack level) && f32.abs(q[tree_dims[node_index]] - tree_meds[parent_index]) < wnnd)
+                then (parent_index, setPackedInd stack level true, level, sibling_index)
+                else (parent_index, setPackedInd stack level false, level-1, rec_node)
+
+  let new_leaf =
+    if parent_rec == 0 && rec_node == -1
+    then -1 -- we are done, we are at the root node and its second child has been visited
+    else loop node_index = rec_node
+      while !(isLeaf h node_index) do
+        if q[tree_dims[node_index]] < tree_meds[node_index]
+          then getLeftChild node_index -- if q less than median, go left
+          else getRightChild node_index -- if q greater than median, go right
+  in (new_leaf, stack)
 
 -- ==
 -- entry: main
@@ -177,7 +203,10 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
 
-entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32)=
+let get_wnnd [k] (knns: [k](i32, f32)) : f32 =
+  knns[k-1].1
+
+entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32)=
     let pad_elm = replicate d f32.inf
 
     -- pad and shadow out old P and n
@@ -186,17 +215,23 @@ entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32)=
 
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
-    let (tree_dims, tree_medians, tree_ubs, tree_lbs) = unzip4 tree
-    let lidxs = map (\q -> find_natural_leaf q tree_dims tree_medians) Q
     let num_leaves = (length tree) + 1
-    let visited = replicate num_leaves 0i32
-    let stack = replicate m 0i32
-    --let (visited, _, _) = loop (visited, stack, lidx) while (lidx != -1) do
-    --  let visited = visited with [lidx] = 1
-    --  let (lidx, stack) = traverse_once Q tree lidx stack
-    --  in (visited, stack, lidx)
-    --in visited
-    in lidxs
+    let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
+    let lidxs = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
 
-entry test [n][d] (P: [n][d]f32) =
-  main 256i32 P
+    let stacks = replicate m 0i32
+    let visited = replicate num_leaves 0i32
+
+    let km = k * m
+    let KNNs = unflatten m k <| zip (replicate km (-1)) (replicate km f32.inf)
+
+    let (visited, _, _) = loop (visited, stacks, lidxs) while (lidxs[0] != -1) do
+      let visited = visited with [lidxs[0]] = 1
+      let (lidxs, stacks) = unzip <|
+              map4 (\ q stack lidx knns -> traverse_once h q stack lidx
+                      (get_wnnd knns) tree) Q stacks lidxs KNNs
+      in (visited, stacks, lidxs)
+    in visited
+
+--entry test [n][d] (P: [n][d]f32) =
+--  main 256i32 P
