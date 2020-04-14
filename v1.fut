@@ -81,21 +81,16 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       -- the dim-median pairs themselves
       -- and the new ordering of the indices for the points
 
-      -- the point indices for this segment
-      -- COSMIN: this is map with identity, why?
-      -- let my_seg_Pindss = map (\i -> seg_Pinds[i]) <| iota seg_cnt
-      let my_seg_Pindss = seg_Pinds
-
       -- the actual points in this segment
       -- COSMIN: this is a performance bug as it does not exploits
       --         the inner parallelism of size d; fixed below; please
       --         verify that it is correct.
-      -- let my_segs = map (\i -> gather1d my_seg_Pindss[i] P) <| iota seg_cnt
+      -- let my_segs = map (\i -> gather1d seg_Pinds[i] P) <| iota seg_cnt
       let my_segs = map (\sgm_inds ->
                             map (\ind ->
                                     map (\j -> P[ind, j]) (iota d)
                                 ) sgm_inds
-                        ) my_seg_Pindss
+                        ) seg_Pinds
 
       -- for every segment, the dimension chosen, and the upper and lower bounds for that dimension
       let (dim_inds, ubs, lbs) =
@@ -113,7 +108,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
                     in (dim_ind, maxs[dim_ind], mins[dim_ind])
                   ) <| iota seg_cnt
 
-      let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) my_seg_Pindss[i] ) <| iota seg_cnt
+      let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) seg_Pinds[i] ) <| iota seg_cnt
 
       -- the index is only a passanger, so the value we put in the neutral element does not matter
       -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
@@ -178,7 +173,7 @@ let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -t /dev/stderr > /dev/null
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
---
+
 entry main [n][d] (leaf_size_lb: i32) (P: [n][d]f32) =
     let pad_elm = replicate d f32.inf
 
