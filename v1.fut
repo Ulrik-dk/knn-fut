@@ -9,7 +9,6 @@ let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
 let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
   map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
 
--- todo: map unzip
 let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
   let nm = n*m
   let flat = flatten A :> [nm](t1, t2)
@@ -81,11 +80,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       -- the dim-median pairs themselves
       -- and the new ordering of the indices for the points
 
-      -- the actual points in this segment
-      -- COSMIN: this is a performance bug as it does not exploits
-      --         the inner parallelism of size d; fixed below; please
-      --         verify that it is correct.
-      -- let my_segs = map (\i -> gather1d seg_Pinds[i] P) <| iota seg_cnt
+      -- the points in this segment
       let my_segs = map (\sgm_inds ->
                             map (\ind ->
                                     map (\j -> P[ind, j]) (iota d)
@@ -110,25 +105,21 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
 
       let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) seg_Pinds[i] ) <| iota seg_cnt
 
-      -- the index is only a passanger, so the value we put in the neutral element does not matter
+      -- the index is only a passenger, so the value we put in the neutral element does not matter
       -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
       --         pads to a power of two: you need to make sure they are ordered at the end!
-      let (s_valss, s_indss) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len)
+      let (s_valss, sPinds) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len)
                                                                 (\(a,i1) (b,i2) -> if a < b then true  else
                                                                                    if a > b then false else
                                                                                    i1 <= i2
                                                                 ) valss_indss
 
-      -- COSMIN: the map below was also returning sPinds which was essentially s_indss,
-      --         and also the dim_inds. I have removed them from the map as they are
-      --         redundant computation.
-      let sPinds = s_indss
       let (t_inds, dims_medians) = unzip <| map (\i ->
           -- median value picked from sorted values
           let median = s_valss[i,(seg_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
-          let t_ind = i + seg_cnt - 1 -- FIXME: is this correct? COSMIN: looks correct
+          let t_ind = i + seg_cnt - 1
           in (t_ind, median)
         ) <| iota seg_cnt
 
@@ -139,7 +130,6 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       in (tree, (flatten sPinds))
 
     -- "sorts" the points P such that they now align with the new ordering of the inds
-    -- COSMIN: use gather2D here to utilize also the inner parallelism of size d!
     let reordered_P = gather2d (Pinds :> [n]i32) P
 
     -- returns the tree and the reordered points
@@ -155,7 +145,6 @@ let find_natural_leaf [tsz] (Q: f32) (tree: [tsz]f32) : i32 =
 
 let traverse_once [tsz] (Q: f32) (tree: [tsz]f32) (lidx: i32) (stack: i32) =
   (1i32, stack)
-  -- TODO: take from Cosmins code
   -- climb to recursionpoint / root
   -- stop, or climb to new natural leaf
   -- return -1 if processing is done
