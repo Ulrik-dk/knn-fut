@@ -1,27 +1,12 @@
 open import "lib/github.com/diku-dk/sorts/merge_sort"
 open import "lib/github.com/diku-dk/sorts/radix_sort"
 open import "lib/batch-merge-sort"
-
--- anonymous dimensions so we can gather less than all src elms
-let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
-  map (\i -> src[i]) inds
-
-let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
-  map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
-
-let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
-  let nm = n*m
-  let flat = flatten A :> [nm](t1, t2)
-  let (A_1, A_2) = unzip flat
-  in (unflatten n m A_1, unflatten n m A_2)
+open import "util"
 
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
     else if f32.isinf b then a
     else f32.max a b
-
-let i32_log2 (x: i32) : i32 =
-  i32.f32 <| f32.log2 <| f32.i32 x
 
 -- size of leafs will be in [leaf_size_lb ... (leaf_size_lb*2)-1]
 -- guarantees num_pad_elms < num_leaves
@@ -206,7 +191,7 @@ let traverse_once [tsz][d] (h: i32)
 let get_wnnd [k] (knns: [k](i32, f32)) : f32 =
   knns[k-1].1
 
-entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32)=
+entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
 
     -- pad and shadow out old P and n
@@ -226,6 +211,8 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32)=
     let KNNs = unflatten m k <| zip (replicate km (-1)) (replicate km f32.inf)
 
     let (visited, _, _) = loop (visited, stacks, lidxs) while (lidxs[0] != -1) do
+      -- this sets visited for the one found by natural leaf first
+      -- and then in the last iteration, we dont try to set visited[-1]
       let visited = visited with [lidxs[0]] = 1
       let (lidxs, stacks) = unzip <|
               map4 (\ q stack lidx knns -> traverse_once h q stack lidx

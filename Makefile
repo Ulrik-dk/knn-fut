@@ -2,8 +2,12 @@ v1:
 	@futhark c v1.fut
 	@echo "2i32 1i32 [[0f32,1],[2,3],[4,5],[6,7],[1,2],[4,3],[2,1]] [[5f32, 2]]" |./v1
 
+bf:
+	@futhark c bf.fut
+	@echo "1i32 [[0f32,1],[2,3],[4,5],[6,7],[1,2],[4,3],[2,1]] [[5f32, 2]]" |./bf
+
 clean:
-	rm v1 v1.c
+	rm bf bf.c v1 v1.c tree-trav tree-trav.c
 
 v1-test:
 	futhark dataset -b --generate=[134217728]f32 > v1.in
@@ -12,8 +16,6 @@ v1-test:
 	futhark opencl v1.fut
 	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
 
-brute:
-	@futhark c brute.fut
 
 paper:
 	@futhark c paper.fut
