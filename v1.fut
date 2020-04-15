@@ -160,10 +160,18 @@ let traverse_once [tsz][d] (h: i32)
          (lidx,       stack, h,     -1)
           while (node_index != 0) && (rec_node < 0) do
               let parent_index = getParent node_index
-              let sibling_index = getSibling node_index
-              in if (!(getPackedInd stack level) && f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
-                then (parent_index, setPackedInd stack level true, level, sibling_index)
-                else (parent_index, setPackedInd stack level false, level-1, rec_node)
+              let sibling_index = getSibling node_index in
+              --  if (!(getPackedInd stack level) && f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
+              --  then (parent_index, setPackedInd stack level true, level, sibling_index)
+              --  else (parent_index, setPackedInd stack level false, level-1, rec_node)
+              if getPackedInd stack level
+              then -- sibling (second node) already visited, go up the tree
+                   (parent_index, setPackedInd stack level false, level-1, rec_node)
+              else let to_visit = f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd
+                   in if !to_visit
+                      then (parent_index, setPackedInd stack level false, level-1, rec_node)
+                      else (parent_index, setPackedInd stack level true, level, sibling_index)
+                   
 
   let new_leaf =
     if parent_rec == 0 && rec_node == -1
