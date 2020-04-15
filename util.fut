@@ -14,11 +14,3 @@ let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
 
 let i32_log2 (x: i32) : i32 =
   i32.f32 <| f32.log2 <| f32.i32 x
-
-let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =
-  f32.abs <| reduce_comm (+) 0f32 <| map2 (-) p q
-
-let pick_cols [n][m] 't (k: i32) (A: [n][m]t) : [n][k]t =
-  map (\ row ->
-    map (\ i -> row[i]) <| iota k 
-  ) A

@@ -161,7 +161,7 @@ let traverse_once [tsz][d] (h: i32)
           while (node_index != 0) && (rec_node < 0) do
               let parent_index = getParent node_index
               let sibling_index = getSibling node_index
-              in if (!(getPackedInd stack level) && f32.abs(q[tree_dims[node_index]] - tree_meds[parent_index]) < wnnd)
+              in if (!(getPackedInd stack level) && f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
                 then (parent_index, setPackedInd stack level true, level, sibling_index)
                 else (parent_index, setPackedInd stack level false, level-1, rec_node)
 
@@ -201,6 +201,7 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) 
     let h = h_from_l_sz leaf_size n
     let (tree, P) = build_balanced_tree P h
     let num_leaves = (length tree) + 1
+    -- TODO: construct upper and lower-bounds for each segment of P, ie. for the leaves
     let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
     let lidxs = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
 
