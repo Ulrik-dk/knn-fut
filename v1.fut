@@ -222,7 +222,7 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) 
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
     let ordered_all_knns = copy knns
     in unzip_matrix <| (.0) <|
-    loop (ordered_all_knns, knns, Q_inds, lidxs, stacks) while (length Q > 0) do
+    loop (ordered_all_knns, knns, Q_inds, lidxs, stacks) while (length lidxs > 0) do
 
       -- 1. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q_ind knn lidx ->
