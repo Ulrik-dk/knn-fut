@@ -133,13 +133,12 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
--- TODO: modify to use arbitrary dimensions
 let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_meds: [tsz]f32) : i32 =
     let i = 0
     let i = loop i while (i < tsz) do
       if (q[tree_dims[i]] <= tree_meds[i])
-        then (i*2)+1
-        else (i*2)+2
+        then getLeftChild(i)
+        else getRightChild(i)
     in i - tsz
 
 -- for one query - should be used in a map
@@ -171,7 +170,7 @@ let traverse_once [tsz][d] (h: i32)
                    in if !to_visit
                       then (parent_index, setPackedInd stack level false, level-1, rec_node)
                       else (parent_index, setPackedInd stack level true, level, sibling_index)
-                   
+
 
   let new_leaf =
     if parent_rec == 0 && rec_node == -1
@@ -224,8 +223,9 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) 
       -- and then in the last iteration, we dont try to set visited[-1]
       let visited = visited with [lidxs[0]] = 1
       let (lidxs, stacks) = unzip <|
-              map4 (\ q stack lidx knns -> traverse_once h q stack lidx
-                      (get_wnnd knns) tree) Q stacks lidxs KNNs
+              map4 (\ q stack lidx wnnd ->
+                  traverse_once h q stack lidx wnnd tree
+                ) Q stacks lidxs (map (get_wnnd) KNNs)
       in (visited, stacks, lidxs)
     in visited
 
