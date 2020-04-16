@@ -2,6 +2,7 @@ open import "lib/github.com/diku-dk/sorts/merge_sort"
 open import "lib/github.com/diku-dk/sorts/radix_sort"
 open import "lib/batch-merge-sort"
 open import "util"
+open import "bf"
 
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
@@ -29,14 +30,11 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32) =
-
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32, []i32) =
     -- the number of leaves is determined from the height
     let num_leaves = 1<<(h+1)
-
     -- the indices of the points
     let Pinds = iota n
-
     -- the number of nodes in the tree from the number of leaves
     let num_tree_nodes = num_leaves - 1
 
@@ -93,9 +91,10 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
       --         pads to a power of two: you need to make sure they are ordered at the end!
       let (s_valss, sPinds) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len)
-                                                                (\(a,i1) (b,i2) -> if a < b then true  else
-                                                                                   if a > b then false else
-                                                                                   i1 <= i2
+                                                                (\(a,i1) (b,i2) ->
+                                                                  if a < b then true  else
+                                                                  if a > b then false else
+                                                                  i1 <= i2
                                                                 ) valss_indss
 
       let (t_inds, dims_medians) = unzip <| map (\i ->
@@ -116,8 +115,11 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     -- "sorts" the points P such that they now align with the new ordering of the inds
     let reordered_P = gather2d (Pinds :> [n]i32) P
 
-    -- returns the tree and the reordered points
-    in (tree, reordered_P)
+    -- TODO: Is this the correct way to show where a given P in its new location came from?
+    let original_P_inds = gather1d (Pinds :> [n]i32) (iota n)
+
+    -- returns the tree and the reordered points, and their relation to their original indices
+    in (tree, reordered_P, original_P_inds)
 
 ----------- traversal ----------
 
@@ -160,6 +162,7 @@ let traverse_once [tsz][d] (h: i32)
           while (node_index != 0) && (rec_node < 0) do
               let parent_index = getParent node_index
               let sibling_index = getSibling node_index in
+              --TODO: something here? I forgot
               --  if (!(getPackedInd stack level) && f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
               --  then (parent_index, setPackedInd stack level true, level, sibling_index)
               --  else (parent_index, setPackedInd stack level false, level-1, rec_node)
@@ -195,39 +198,57 @@ let traverse_once [tsz][d] (h: i32)
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
 
-let get_wnnd [k] (knns: [k](i32, f32)) : f32 =
-  knns[k-1].1
+let get_wnnd [k] (knns: [k](i32, f32)) : f32 = knns[k-1].1
 
 entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
-
     -- pad and shadow out old P and n
     let (P, leaf_size) = pad P pad_elm leaf_size_lb
     let n = length P
 
     let h = h_from_l_sz leaf_size n
-    let (tree, P) = build_balanced_tree P h
-    let num_leaves = (length tree) + 1
+    let (tree, P, original_P_inds) = build_balanced_tree P h
+    -- let num_leaves = (length tree) + 1
     -- TODO: construct upper and lower-bounds for each segment of P, ie. for the leaves
     let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
+
+    -- leaf indices
     let lidxs = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
 
     let stacks = replicate m 0i32
-    let visited = replicate num_leaves 0i32
+    -- let visited = replicate num_leaves 0i32
 
-    let km = k * m
-    let KNNs = unflatten m k <| zip (replicate km (-1)) (replicate km f32.inf)
+    let Q_inds = iota m
+    let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
+    let ordered_all_knns = copy knns
+    in unzip_matrix <| (.0) <|
+    loop (ordered_all_knns, knns, Q_inds, lidxs, stacks) while (length Q > 0) do
 
-    let (visited, _, _) = loop (visited, stacks, lidxs) while (lidxs[0] != -1) do
-      -- this sets visited for the one found by natural leaf first
-      -- and then in the last iteration, we dont try to set visited[-1]
-      let visited = visited with [lidxs[0]] = 1
-      let (lidxs, stacks) = unzip <|
-              map4 (\ q stack lidx wnnd ->
-                  traverse_once h q stack lidx wnnd tree
-                ) Q stacks lidxs (map (get_wnnd) KNNs)
-      in (visited, stacks, lidxs)
-    in visited
+      -- 1. brute-force on previous leaves and ongoing queries
+      let knns = map3 (\ q_ind knn lidx ->
+                    let ref_inds = iota leaf_size |> map (+(lidx*leaf_size))
+                    let ref_o_inds = gather1d ref_inds original_P_inds
+                    in bruteForce Q[q_ind] knn P ref_inds ref_o_inds
+                  ) Q_inds knns lidxs
 
+      -- 2. traverse-once to find the next leaves
+      let (lidxs, stacks) = unzip <| map4 (\ q_ind stack lidx wnnd -> traverse_once h Q[q_ind] stack lidx wnnd tree) Q_inds stacks lidxs (map get_wnnd knns)
+
+      -- 3. partition so that the queries that finished come last
+      let (done_inds, cont_inds) = partition (\i -> lidxs[i] == -1) (iota <| length Q_inds)
+
+      -- 4. update the ordered_all_knns for the queries that have finished
+      let ordered_all_knns = scatter ordered_all_knns
+                                (map (\i -> Q_inds[i]) done_inds)
+                                (map (\i ->   knns[i]) done_inds)
+
+      -- 5. keep only the ongoing parts of the partitioned arrays: Q, knns, lidxs, stacks
+      let new_len = length cont_inds
+      let knns = gather2d cont_inds knns :> [new_len][k](i32, f32)
+      let lidxs = gather1d cont_inds lidxs
+      let stacks = gather1d cont_inds stacks
+      let Q_inds = gather1d cont_inds Q_inds
+
+      in (ordered_all_knns, knns, Q_inds, lidxs, stacks)
 --entry test [n][d] (P: [n][d]f32) =
 --  main 256i32 P

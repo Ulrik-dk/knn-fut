@@ -3,7 +3,7 @@
 let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
   map (\i -> src[i]) inds
 
-let gather2d [n] [d] 't (inds: [n]i32) (src: [n][d]t) : [n][d]t =
+let gather2d [n][d] 't (inds: [n]i32) (src: [][d]t) : [][d]t =
   map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
 
 let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
