@@ -155,7 +155,7 @@ let traverse_once [tsz][d] (h: i32)
   let setPackedInd (stk: i32) (level: i32) (v: bool) : i32 =
     i32.set_bit level stk (if v then 1 else 0)
 
-  let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
+  let (tree_dims, tree_meds, _, _) = unzip4 tree
   let (parent_rec, stack, _, rec_node) =
     loop (node_index, stack, level, rec_node) =
          (lidx,       stack, h,     -1)
@@ -210,7 +210,7 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) 
     let (tree, P, original_P_inds) = build_balanced_tree P h
     -- let num_leaves = (length tree) + 1
     -- TODO: construct upper and lower-bounds for each segment of P, ie. for the leaves
-    let (tree_dims, tree_meds, tree_ubs, tree_lbs) = unzip4 tree
+    let (tree_dims, tree_meds, _, _) = unzip4 tree
 
     -- leaf indices
     let lidxs = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
