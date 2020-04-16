@@ -124,17 +124,15 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
 ----------- traversal ----------
 
 let getParent (node_index: i32) = (node_index-1) / 2
--- uneven node indices are left-children, even are right-children
 let getLeftChild (node_index: i32) = (node_index * 2) + 1
 let getRightChild (node_index: i32) = (node_index * 2) + 2
 let getSibling (node_index: i32) = if (node_index%2==0) then node_index-1 else node_index+1
-
 let isLeaf (h: i32) (node_index: i32) = node_index >= (1 << (h+1)) - 1
-
 let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
+-- TODO: clean this up
 let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_meds: [tsz]f32) : i32 =
     let i = 0
     let i = loop i while (i < tsz) do
@@ -144,6 +142,7 @@ let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_meds: [ts
     in i - tsz
 
 -- for one query - should be used in a map
+-- TODO: clean this up
 let traverse_once [tsz][d] (h: i32)
                            (q: [d]f32)
                            (stack: i32)
@@ -198,8 +197,10 @@ let traverse_once [tsz][d] (h: i32)
 -- for profiling:
 -- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
 
+-- TODO: reconsider this function
 let get_wnnd [k] (knns: [k](i32, f32)) : f32 = knns[k-1].1
 
+-- TODO: clean this up
 entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
     -- pad and shadow out old P and n
