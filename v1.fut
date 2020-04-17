@@ -201,7 +201,7 @@ let traverse_once [tsz][d] (h: i32)
 let get_wnnd [k] (knns: [k](i32, f32)) : f32 = knns[k-1].1
 
 -- TODO: clean this up
-entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
     -- pad and shadow out old P and n
     let (P, leaf_size) = pad P pad_elm leaf_size_lb
@@ -251,5 +251,14 @@ entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) 
       let Q_inds = gather1d cont_inds Q_inds
 
       in (ordered_all_knns, knns, Q_inds, lidxs, stacks)
+
+entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+  v1 leaf_size_lb k P Q
+
+entry validation [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+  let (a, b) = simpleBruteForce k P Q
+  let (c, d) = v1 leaf_size_lb k P Q
+  in (a, c, b, d)
+
 --entry test [n][d] (P: [n][d]f32) =
 --  main 256i32 P
