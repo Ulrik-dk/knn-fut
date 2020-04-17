@@ -209,7 +209,8 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     let h = h_from_l_sz leaf_size n
     let (tree, P, original_P_inds) = build_balanced_tree P h
-    -- let num_leaves = (length tree) + 1
+    let num_leaves = (length tree) + 1
+    let P2D = unflatten num_leaves leaf_size
     -- TODO: construct upper and lower-bounds for each segment of P, ie. for the leaves
     let (tree_dims, tree_meds, _, _) = unzip4 tree
 
@@ -227,10 +228,12 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- 1. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q_ind knn lidx ->
-                    let ref_inds = iota leaf_size |> map (+(lidx*leaf_size))
-                    let refs = gather1d ref_inds P
-                    let ref_o_inds = gather1d ref_inds original_P_inds
-                    in bruteForce Q[q_ind] knn refs ref_o_inds
+                    let (beg, leaf_points) = (lidx*leaf_size, P2D[lidx])
+                    in  bruteForce Q[q_ind] knn beg refs leaf_points ...
+--                    let ref_inds = iota leaf_size |> map (+(lidx*leaf_size))
+--                    let refs = gather1d ref_inds P
+--                    let ref_o_inds = gather1d ref_inds original_P_inds
+--                    in bruteForce Q[q_ind] knn refs ref_o_inds
                   ) Q_inds knns lidxs
 
       -- 2. traverse-once to find the next leaves
