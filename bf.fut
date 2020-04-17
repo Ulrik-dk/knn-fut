@@ -16,11 +16,10 @@ let update_knns [k] (knn: [k](i32,f32))
 -- TODO: clean this up
 let bruteForce [n][d][k] (q: [d]f32)
                          (knn: [k](i32,f32))
-                         (refs: [][d]f32)
-                         (ref_inds: [n]i32)
+                         (refs: [n][d]f32)
                          (ref_o_inds: [n]i32) : [k](i32, f32) =
   loop knn for i < n do
-    let dist = my_dist refs[ref_inds[i]] q in
+    let dist = my_dist refs[i] q in
     if dist >= knn[k-1].1 -- >= makes it perform as few updates as possible
       then knn
       else update_knns knn (ref_o_inds[i], dist)
@@ -29,7 +28,7 @@ let bruteForce [n][d][k] (q: [d]f32)
 let simpleBruteForce [n][m][d] (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
   let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) f32.inf) :> *[m][k](i32,f32)
   let Pinds = iota n
-  in map2 (\q knn -> bruteForce q knn P Pinds Pinds) Q knns
+  in map2 (\q knn -> bruteForce q knn P Pinds) Q knns
   |> unzip_matrix
 
 --trivial brute-force knn algorithm

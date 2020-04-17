@@ -20,7 +20,6 @@ v1-test:
 	futhark opencl v1.fut
 	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
 
-
 paper:
 	@futhark c paper.fut
 
