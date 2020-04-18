@@ -3,6 +3,7 @@ open import "lib/github.com/diku-dk/sorts/radix_sort"
 open import "lib/batch-merge-sort"
 open import "util"
 open import "bf"
+open import "constants"
 
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
@@ -11,26 +12,24 @@ let my_maxf32 (a: f32) (b: f32) =
 
 -- size of leafs will be in [leaf_size_lb ... (leaf_size_lb*2)-1]
 -- guarantees num_pad_elms < num_leaves
-let round_down_to_pow_2 (x: i32) : i32 =
-  (2**) <| i32_log2 x
 
-let h_from_l_sz (l_sz: i32) (n: i32) : i32 =
-  let num_leaves = n / l_sz
+let get_height (leaf_size: i32) (n: i32) : i32 =
+  let num_leaves = n / leaf_size
   let h = i32_log2 num_leaves
   in h-1
 
 let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
     let num_default_leaves = n / leaf_size_lb
-    let num_leaves = round_down_to_pow_2 num_default_leaves
+    let num_leaves = (2**) <| i32_log2 num_default_leaves
     let num_redist = n - (num_leaves * leaf_size_lb)
     let num_excess = num_redist % num_leaves
     let num_padding = if num_excess == 0 then 0 else (num_leaves - num_excess)
-    let l_sz = leaf_size_lb + (num_redist / num_leaves) + (if num_excess > 0 then 1 else 0)
-    in (P ++ (replicate num_padding pad_elm), l_sz)
+    let leaf_size = leaf_size_lb + (num_redist / num_leaves) + (if num_excess > 0 then 1 else 0)
+    in (P ++ (replicate num_padding pad_elm), leaf_size)
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32, []i32) =
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][][]f32, []i32) =
     -- the number of leaves is determined from the height
     let num_leaves = 1<<(h+1)
     -- the indices of the points
@@ -115,11 +114,14 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     -- "sorts" the points P such that they now align with the new ordering of the inds
     let reordered_P = gather2d (Pinds :> [n]i32) P
 
-    -- TODO: Is this the correct way to show where a given P in its new location came from?
+    let seg_len = n >> h
+    let seg_cnt = n / seg_len
+    let leaf_structure = flatten reordered_P |> unflatten_3d seg_cnt seg_len d
+
     let original_P_inds = gather1d (Pinds :> [n]i32) (iota n)
 
     -- returns the tree and the reordered points, and their relation to their original indices
-    in (tree, reordered_P, original_P_inds)
+    in (tree, leaf_structure, original_P_inds)
 
 ----------- traversal ----------
 
@@ -132,137 +134,110 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
--- TODO: clean this up
-let find_natural_leaf [d][tsz] (q: [d]f32) (tree_dims: [tsz]i32) (tree_meds: [tsz]f32) : i32 =
-    let i = 0
-    let i = loop i while (i < tsz) do
+let find_natural_leaf [d][tree_size] (q: [d]f32) (tree_dims: [tree_size]i32) (tree_meds: [tree_size]f32) : i32 =
+    let i = loop i = 0 while (i < tree_size) do
       if (q[tree_dims[i]] <= tree_meds[i])
         then getLeftChild(i)
         else getRightChild(i)
-    in i - tsz
+    in i - tree_size
 
--- for one query - should be used in a map
--- TODO: clean this up
-let traverse_once [tsz][d] (h: i32)
+let traverse_once [tree_size][d] (h: i32)
                            (q: [d]f32)
                            (stack: i32)
-                           (lidx: i32) -- last leaf index
-                           (wnnd: f32) -- worst nearest neighbor distance
-                           (tree: [tsz](i32, f32, f32, f32)) =
+                           (leaf_index: i32)
+                           (wnnd: f32)
+                           (tree: [tree_size](i32, f32, f32, f32)) =
   let getPackedInd (stk: i32) (level: i32) : bool =
     i32.get_bit level stk |> (>0)
-  let setPackedInd (stk: i32) (level: i32) (v: bool) : i32 =
-    i32.set_bit level stk (if v then 1 else 0)
+  let setPackedInd (stk: i32) (level: i32) (v: i32) : i32 =
+    i32.set_bit level stk v
 
+  --TODO: can this be made less deep?
   let (tree_dims, tree_meds, _, _) = unzip4 tree
-  let (parent_rec, stack, _, rec_node) =
-    loop (node_index, stack, level, rec_node) =
-         (lidx,       stack, h,     -1)
-          while (node_index != 0) && (rec_node < 0) do
-              let parent_index = getParent node_index
-              let sibling_index = getSibling node_index in
-              --TODO: something here? I forgot
-              --  if (!(getPackedInd stack level) && f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
-              --  then (parent_index, setPackedInd stack level true, level, sibling_index)
-              --  else (parent_index, setPackedInd stack level false, level-1, rec_node)
-              if getPackedInd stack level
-              then -- sibling (second node) already visited, go up the tree
-                   (parent_index, setPackedInd stack level false, level-1, rec_node)
-              else let to_visit = f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd
-                   in if !to_visit
-                      then (parent_index, setPackedInd stack level false, level-1, rec_node)
-                      else (parent_index, setPackedInd stack level true, level, sibling_index)
+  let (parent_rec, stack, rec_node, _) =
+  loop (node_index, stack, rec_node, level) =
+       (leaf_index, stack, -1, h)
+  while (node_index != 0) && (rec_node < 0) do
+    let parent_index = getParent node_index in
+    --TODO: reorganize this, prepare for extra test
+    if getPackedInd stack level
+    then -- sibling (second node) already visited, go up the tree
+      (parent_index, setPackedInd stack level 0, rec_node, level-1)
+    else
+      if !(f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
+        then (parent_index, setPackedInd stack level 0, rec_node, level-1)
+        else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
-
+  --TODO: can this be made less deep?
   let new_leaf =
     if parent_rec == 0 && rec_node == -1
-    then -1 -- we are done, we are at the root node and its second child has been visited
-    else loop node_index = rec_node
-      while !(isLeaf h node_index) do
-        if q[tree_dims[node_index]] < tree_meds[node_index]
-          then getLeftChild node_index -- if q less than median, go left
-          else getRightChild node_index -- if q greater than median, go right
+      then -1 -- we are done, we are at the root node and its second child has been visited
+      else
+        loop node_index = rec_node
+        while !(isLeaf h node_index) do
+          if q[tree_dims[node_index]] < tree_meds[node_index]
+            then getLeftChild node_index -- if q less than median, go left
+            else getRightChild node_index -- if q greater than median, go right
   in (new_leaf, stack)
 
--- ==
--- entry: main
---
--- compiled random input { 256i32 [8388608][8]f32 }
--- compiled random input { 256i32 [2097152][16]f32 }
--- compiled random input { 256i32 [8388608][16]f32 }
--- compiled random input { 256i32 [1048576][16]f32 }
+-- worst nearest neighbor distance
+let get_wnnd [k] (knn: [k](i32, f32)) : f32 = knn[k-1].1
 
--- execute with:
--- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -t /dev/stderr > /dev/null
--- for profiling:
--- $ futhark dataget v1.fut "256i32 [1048576][16]f32" | ./v1 -P -t /dev/stderr > /dev/null
-
--- TODO: reconsider this function
-let get_wnnd [k] (knns: [k](i32, f32)) : f32 = knns[k-1].1
-
--- TODO: clean this up
 let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
     -- pad and shadow out old P and n
-    let (P, leaf_size) = pad P pad_elm leaf_size_lb
-    let n = length P
+    let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
 
-    let h = h_from_l_sz leaf_size n
-    let (tree, P, original_P_inds) = build_balanced_tree P h
-    let num_leaves = (length tree) + 1
-    let P2D = unflatten num_leaves leaf_size
-    -- TODO: construct upper and lower-bounds for each segment of P, ie. for the leaves
+    let h = get_height leaf_size (length padded_P)
+    let (tree, leaf_structure, original_P_inds) = build_balanced_tree padded_P h
     let (tree_dims, tree_meds, _, _) = unzip4 tree
 
-    -- leaf indices
-    let lidxs = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
+    let leaf_indices = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
 
     let stacks = replicate m 0i32
-    -- let visited = replicate num_leaves 0i32
 
     let Q_inds = iota m
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
     let ordered_all_knns = copy knns
-    in unzip_matrix <| (.0) <|
-    loop (ordered_all_knns, knns, Q_inds, lidxs, stacks) while (length lidxs > 0) do
+    let ordered_all_knns = unzip_matrix <| (.0) <|
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
 
       -- 1. brute-force on previous leaves and ongoing queries
-      let knns = map3 (\ q_ind knn lidx ->
-                    let (beg, leaf_points) = (lidx*leaf_size, P2D[lidx])
-                    in  bruteForce Q[q_ind] knn beg refs leaf_points ...
---                    let ref_inds = iota leaf_size |> map (+(lidx*leaf_size))
---                    let refs = gather1d ref_inds P
---                    let ref_o_inds = gather1d ref_inds original_P_inds
---                    in bruteForce Q[q_ind] knn refs ref_o_inds
-                  ) Q_inds knns lidxs
+      let knns = map3 (\ q_ind knn leaf_index ->
+                    bruteForce Q[q_ind] knn leaf_structure[leaf_index] leaf_index
+                  ) Q_inds knns leaf_indices
 
       -- 2. traverse-once to find the next leaves
-      let (lidxs, stacks) = unzip <| map4 (\ q_ind stack lidx wnnd -> traverse_once h Q[q_ind] stack lidx wnnd tree) Q_inds stacks lidxs (map get_wnnd knns)
+      let (leaf_indices, stacks) = unzip <| map4 (\ q_ind stack leaf_index wnnd ->
+                                            traverse_once h Q[q_ind] stack leaf_index wnnd tree
+                                          ) Q_inds stacks leaf_indices (map get_wnnd knns)
 
       -- 3. partition so that the queries that finished come last
-      let (done_inds, cont_inds) = partition (\i -> lidxs[i] == -1) (iota <| length Q_inds)
+      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length Q_inds)
 
       -- 4. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter ordered_all_knns
                                 (map (\i -> Q_inds[i]) done_inds)
                                 (map (\i ->   knns[i]) done_inds)
 
-      -- 5. keep only the ongoing parts of the partitioned arrays: Q, knns, lidxs, stacks
+      -- 5. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
       let new_len = length cont_inds
       let knns = gather2d cont_inds knns :> [new_len][k](i32, f32)
-      let lidxs = gather1d cont_inds lidxs
+      let leaf_indices = gather1d cont_inds leaf_indices
       let stacks = gather1d cont_inds stacks
       let Q_inds = gather1d cont_inds Q_inds
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q_inds)
 
-      in (ordered_all_knns, knns, Q_inds, lidxs, stacks)
+    let fixed_knn_inds = gather1d (flatten ordered_all_knns.0) original_P_inds |> unflatten m k
+    in (fixed_knn_inds, ordered_all_knns.1)
 
-entry main [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-  v1 leaf_size_lb k P Q
+entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+  v1 leaf_size_lb GetK P Q
 
-entry validation [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-  let (a, b) = simpleBruteForce k P Q
-  let (c, d) = v1 leaf_size_lb k P Q
+entry validation [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+  let (a, b) = pureForceWrapper GetK P Q
+  let (c, d) = v1 leaf_size_lb GetK P Q
   in (a, c, b, d)
 
---entry test [n][d] (P: [n][d]f32) =
---  main 256i32 P
+entry just_distances [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+  v1 leaf_size_lb GetK P Q |> (.1)
