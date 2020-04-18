@@ -29,7 +29,7 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][][]f32, []i32) =
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32, []i32) =
     -- the number of leaves is determined from the height
     let num_leaves = 1<<(h+1)
     -- the indices of the points
@@ -114,14 +114,10 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     -- "sorts" the points P such that they now align with the new ordering of the inds
     let reordered_P = gather2d (Pinds :> [n]i32) P
 
-    let seg_len = n >> h
-    let seg_cnt = n / seg_len
-    let leaf_structure = flatten reordered_P |> unflatten_3d seg_cnt seg_len d
-
     let original_P_inds = gather1d (Pinds :> [n]i32) (iota n)
 
     -- returns the tree and the reordered points, and their relation to their original indices
-    in (tree, leaf_structure, original_P_inds)
+    in (tree, reordered_P, original_P_inds)
 
 ----------- traversal ----------
 
@@ -189,7 +185,12 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
 
     let h = get_height leaf_size (length padded_P)
-    let (tree, leaf_structure, original_P_inds) = build_balanced_tree padded_P h
+    let (tree, reordered_P, original_P_inds) = build_balanced_tree padded_P h
+
+    let num_leaves = (length padded_P) / leaf_size
+
+    let leaf_structure = unflatten_3d num_leaves leaf_size d(flatten reordered_P)
+
     let (tree_dims, tree_meds, _, _) = unzip4 tree
 
     let leaf_indices = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
@@ -234,10 +235,6 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
   v1 leaf_size_lb GetK P Q
 
-entry validation [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-  let (a, b) = pureForceWrapper GetK P Q
-  let (c, d) = v1 leaf_size_lb GetK P Q
-  in (a, c, b, d)
-
-entry just_distances [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+entry just_distances [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
+  let leaf_size_lb = 256 in
   v1 leaf_size_lb GetK P Q |> (.1)
