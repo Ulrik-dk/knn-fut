@@ -130,6 +130,7 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
+-- i is the starting-index into the tree.
 let find_natural_leaf [d][tree_size] (i: i32) (q: [d]f32) (tree_dims: [tree_size]i32) (tree_meds: [tree_size]f32) : i32 =
     let i = loop i while (i < tree_size) do
       if (q[tree_dims[i]] < tree_meds[i])
@@ -226,9 +227,13 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let fixed_knn_inds = gather1d (flatten ordered_all_knns.0) original_P_inds |> unflatten m k
     in (fixed_knn_inds, ordered_all_knns.1)
 
-entry main [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-  v1 leaf_size_lb GetK P Q
+--entry main1 [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+--  v1 leaf_size_lb GetK P Q
 
-entry just_distances [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
+entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let leaf_size_lb = 256 in
   v1 leaf_size_lb GetK P Q |> (.1)
+
+-- ==
+-- input @ test.in
+-- output @ test.out
