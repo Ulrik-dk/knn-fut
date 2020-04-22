@@ -130,9 +130,9 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     let leaf_ind = (t32 q) / ppl
     in  leaf_ind + (1<<(h+1)) - 1
 
-let find_natural_leaf [d][tree_size] (q: [d]f32) (tree_dims: [tree_size]i32) (tree_meds: [tree_size]f32) : i32 =
-    let i = loop i = 0 while (i < tree_size) do
-      if (q[tree_dims[i]] <= tree_meds[i])
+let find_natural_leaf [d][tree_size] (i: i32) (q: [d]f32) (tree_dims: [tree_size]i32) (tree_meds: [tree_size]f32) : i32 =
+    let i = loop i while (i < tree_size) do
+      if (q[tree_dims[i]] < tree_meds[i])
         then getLeftChild(i)
         else getRightChild(i)
     in i - tree_size
@@ -164,16 +164,10 @@ let traverse_once [tree_size][d] (h: i32)
         then (parent_index, setPackedInd stack level 0, rec_node, level-1)
         else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
-  --TODO: can this be made less deep?
   let new_leaf =
     if parent_rec == 0 && rec_node == -1
       then -1 -- we are done, we are at the root node and its second child has been visited
-      else
-        loop node_index = rec_node
-        while !(isLeaf h node_index) do
-          if q[tree_dims[node_index]] < tree_meds[node_index]
-            then getLeftChild node_index -- if q less than median, go left
-            else getRightChild node_index -- if q greater than median, go right
+      else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
 
 -- worst nearest neighbor distance
@@ -193,7 +187,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     let (tree_dims, tree_meds, _, _) = unzip4 tree
 
-    let leaf_indices = map (\q -> find_natural_leaf q tree_dims tree_meds) Q
+    let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
 
     let stacks = replicate m 0i32
 

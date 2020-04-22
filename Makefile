@@ -3,7 +3,7 @@ validation-v1:
 	@futhark c bf.fut
 	./bf --entry=just_distances -t /dev/stderr -r 3 < test.in > test.out
 	@futhark c v1.fut
-	./v1 --entry=just_distances -t /dev/stderr -r 3 < test.in
+	./v1 --entry=just_distances -t /dev/stderr -r 3 < test.in > /dev/null
 
 v1:
 	@futhark c v1.fut
@@ -22,11 +22,3 @@ v1-test:
 	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
 	futhark opencl v1.fut
 	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
-
-paper:
-	@futhark c paper.fut
-
-tree-trav:
-	@futhark c tree-trav.fut
-	@echo "3 1024 8024.0f32 3000.0f32" |./tree-trav
-	@rm -rf tree-trav tree-trav.c
