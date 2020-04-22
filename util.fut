@@ -2,8 +2,10 @@
 
 -- If we just have every algorithm use the same (this) distance function, all will be well (consistently wrong).
 let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =
-  loop acc = 0 for i < d do
-    acc + (f32.abs <| p[i] - q[i])
+  let acc = loop acc = 0 for i < d do
+    acc + ((p[i] - q[i])**2)
+  in f32.sqrt acc
+
 
 let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
   map (\i -> src[i]) inds
