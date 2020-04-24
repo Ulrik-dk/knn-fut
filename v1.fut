@@ -5,6 +5,15 @@ open import "util"
 open import "bf"
 open import "constants"
 
+let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) : *[m][k]t =
+  let nk = n*k
+  let flat_qinds = map (\i -> let (d,r) = (i / k, i % k)
+                              in qinds[d]*k + r
+                       ) (iota nk)
+  let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t) 
+  in  unflatten m k res1D 
+
+
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
     else if f32.isinf b then a
@@ -212,7 +221,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length Q_inds)
 
       -- 4. update the ordered_all_knns for the queries that have finished
-      let ordered_all_knns = scatter ordered_all_knns
+      let ordered_all_knns = scatter2D ordered_all_knns
                                 (map (\i -> Q_inds[i]) done_inds)
                                 (map (\i ->   knns[i]) done_inds)
 
