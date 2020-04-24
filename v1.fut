@@ -10,8 +10,8 @@ let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) :
   let flat_qinds = map (\i -> let (d,r) = (i / k, i % k)
                               in qinds[d]*k + r
                        ) (iota nk)
-  let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t) 
-  in  unflatten m k res1D 
+  let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t)
+  in  unflatten m k res1D
 
 
 let my_maxf32 (a: f32) (b: f32) =
@@ -84,7 +84,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
                     let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
                     let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
-                    let difs = map2(-) mins maxs |> intrinsics.opaque
+                    let difs = map2(-) maxs mins |> intrinsics.opaque
                     let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
