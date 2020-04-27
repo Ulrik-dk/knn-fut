@@ -173,7 +173,7 @@ let traverse_once [tree_size][d]
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
-      if false ---((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
+      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
         then (parent_index, setPackedInd stack level 0, rec_node, level-1)
         else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
