@@ -1,11 +1,9 @@
 validation-v1:
-	@futhark dataset -b --generate=[1000][2]f32 --generate=[1000][2]f32 > test.in
-	@futhark c bf.fut
+	@futhark dataset -b --generate=[100000][6]f32 --generate=[100000][6]f32 > test.in
+	@futhark opencl bf.fut
 	./bf --entry=just_distances -t /dev/stderr -r 3 < test.in > test.out
-	@futhark test v1.fut
-	@futhark bench v1.fut
-
-
+	@futhark test v1.fut --backend=opencl
+	@futhark bench v1.fut --backend=opencl
 
 v1:
 	@futhark c v1.fut

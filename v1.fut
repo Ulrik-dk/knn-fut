@@ -147,7 +147,8 @@ let find_natural_leaf [d][tree_size] (i: i32) (q: [d]f32) (tree_dims: [tree_size
         else getRightChild(i)
     in i - tree_size
 
-let traverse_once [tree_size][d] (h: i32)
+let traverse_once [tree_size][d]
+                           (h: i32)
                            (q: [d]f32)
                            (stack: i32)
                            (leaf_index: i32)
@@ -158,24 +159,26 @@ let traverse_once [tree_size][d] (h: i32)
   let setPackedInd (stk: i32) (level: i32) (v: i32) : i32 =
     i32.set_bit level stk v
 
+  let leaf_index = leaf_index + tree_size
+
   --TODO: can this be made less deep?
   let (tree_dims, tree_meds, _, _) = unzip4 tree
-  let (parent_rec, stack, rec_node, _) =
+
+  let (parent_index, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
        (leaf_index, stack, -1, h)
   while (node_index != 0) && (rec_node < 0) do
     let parent_index = getParent node_index in
-    --TODO: reorganize this, prepare for extra test
     if getPackedInd stack level
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
-      if !(f32.abs(q[tree_dims[parent_index]] - tree_meds[parent_index]) < wnnd)
+      if false ---((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
         then (parent_index, setPackedInd stack level 0, rec_node, level-1)
         else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
   let new_leaf =
-    if parent_rec == 0 && rec_node == -1
+    if rec_node == -1 && parent_index == 0
       then -1 -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
