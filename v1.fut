@@ -245,7 +245,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 --  v1 leaf_size_lb GetK P Q
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
-  let leaf_size_lb = 256 in
+  let leaf_size_lb = 44 in
   v1 leaf_size_lb GetK P Q |> (.1)
 
 -- ==
