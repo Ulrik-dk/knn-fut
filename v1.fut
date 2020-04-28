@@ -13,11 +13,13 @@ let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) :
   let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t)
   in  unflatten m k res1D
 
-
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
     else if f32.isinf b then a
     else f32.max a b
+
+let my_minf32 (a: f32) (b: f32) =
+    f32.min a b
 
 -- size of leafs will be in [leaf_size_lb ... (leaf_size_lb*2)-1]
 -- guarantees num_pad_elms < num_leaves
@@ -82,7 +84,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
                   unzip3 <|
                   map (\i ->
                     let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
-                    let mins = map (\row -> reduce_comm f32.min f32.highest row) my_seg_T |> intrinsics.opaque
+                    let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_seg_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
                     let difs = map2(-) maxs mins |> intrinsics.opaque
                     let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
