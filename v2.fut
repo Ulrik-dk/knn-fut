@@ -1,7 +1,7 @@
 open import "lib/batch-merge-sort"
 open import "bf"
 open import "constants"
-open import "common"
+open import "kd-tree-common"
 
 let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf

@@ -34,7 +34,7 @@ bf:
 
 v1:
 	futhark $(backend) v1.fut
-	futhark test v1.fut >
+	futhark test v1.fut
 	futhark bench v1.fut --backend=$(backend)
 
 v2:
