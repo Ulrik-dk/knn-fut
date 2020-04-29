@@ -1,14 +1,11 @@
 # knn-fut
 knn in futhark
 ## versions:
-  bf
-
+#### bf
 Simple brute force algorithm
-  v1
-
+#### v1
 buffer k-d tree-ish
-  v2
-
+#### v2
 v1 but with strategic sorting
 ## backends:
     c
