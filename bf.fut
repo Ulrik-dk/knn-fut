@@ -23,4 +23,4 @@ let bruteForce [n][d][k] (q: [d]f32)
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let k = GetK
   let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) f32.inf) :> *[m][k](i32,f32)
-  in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix
+  in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix |> (.1)

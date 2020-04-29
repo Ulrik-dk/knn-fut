@@ -44,13 +44,13 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       -- in order to create the node
 
       -- the length of the segment in each node at the current level
-      let seg_len = n >> depth
+      let segment_len = n >> depth
 
       -- the number of nodes at the current level in the tree
-      let seg_cnt = n / seg_len
+      let segment_cnt = n / segment_len
 
       -- unflattening the point inds st. each node has easy access
-      let seg_Pinds = unflatten seg_cnt seg_len Pinds
+      let segment_Pinds = unflatten segment_cnt segment_len Pinds
 
       -- mapping over iota over the number of nodes in the current level
       -- creates the indices into the tree for each new dim-median pair
@@ -58,19 +58,19 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
       -- and the new ordering of the indices for the points
 
       -- the points in this segment
-      let my_segs = map (\sgm_inds ->
+      let my_segments = map (\sgm_inds ->
                             map (\ind ->
                                     map (\j -> P[ind, j]) (iota d)
                                 ) sgm_inds
-                        ) seg_Pinds
+                        ) segment_Pinds
 
       -- for every segment, the dimension chosen, and the upper and lower bounds for that dimension
       let (dim_inds, ubs, lbs) =
                   unzip3 <|
                   map (\i ->
-                    let my_seg_T = transpose my_segs[i] |> intrinsics.opaque
-                    let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_seg_T |> intrinsics.opaque
-                    let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_seg_T |> intrinsics.opaque
+                    let my_segment_T = transpose my_segments[i] |> intrinsics.opaque
+                    let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_segment_T |> intrinsics.opaque
+                    let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_segment_T |> intrinsics.opaque
                     let difs = map2(-) maxs mins |> intrinsics.opaque
                     let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
@@ -78,34 +78,34 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
                         else (dif2, i2)
                       ) (f32.lowest, -1i32) (zip difs (iota d))
                     in (dim_ind, maxs[dim_ind], mins[dim_ind])
-                  ) <| iota seg_cnt
+                  ) <| iota segment_cnt
 
-      let valss_indss = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segs[i]) seg_Pinds[i] ) <| iota seg_cnt
+      let values_indices = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segments[i]) segment_Pinds[i] ) <| iota segment_cnt
 
       -- the index is only a passenger, so the value we put in the neutral element does not matter
-      -- COSMIN: here (f32.highest, seg_len) are the elements by which mergeSorts
+      -- COSMIN: here (f32.highest, segment_len) are the elements by which mergeSorts
       --         pads to a power of two: you need to make sure they are ordered at the end!
-      let (s_valss, sPinds) = unzip_matrix <| batch_merge_sort (f32.highest, seg_len)
+      let (sorted_values, sorted_Pinds) = unzip_matrix <| batch_merge_sort (f32.highest, segment_len)
                                                                 (\(a,i1) (b,i2) ->
                                                                   if a < b then true  else
                                                                   if a > b then false else
                                                                   i1 <= i2
-                                                                ) valss_indss
+                                                                ) values_indices
 
       let (t_inds, dims_medians) = unzip <| map (\i ->
           -- median value picked from sorted values
-          let median = s_valss[i,(seg_len-1)/2]
+          let median = sorted_values[i,(segment_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
-          let t_ind = i + seg_cnt - 1
+          let t_ind = i + segment_cnt - 1
           in (t_ind, median)
-        ) <| iota seg_cnt
+        ) <| iota segment_cnt
 
       -- putting the new tree-medians and dimensions onto the tree
       let tree = scatter tree t_inds (zip4 dim_inds dims_medians ubs lbs)
 
       -- continuing the loop
-      in (tree, (flatten sPinds))
+      in (tree, (flatten sorted_Pinds))
 
     -- "sorts" the points P such that they now align with the new ordering of the inds
     let reordered_P = gather2d (Pinds :> [n]i32) P
