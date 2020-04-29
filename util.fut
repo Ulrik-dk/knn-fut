@@ -1,6 +1,4 @@
--- for common functions that are not algorithm specific
-
--- If we just have every algorithm use the same (this) distance function, all will be well (consistently wrong).
+-- for functions that are general
 let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =
   let acc = loop acc = 0 for i < d do
     let dif = (p[i] - q[i])
@@ -12,6 +10,14 @@ let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
 
 let gather2d [n][d] 't (inds: [n]i32) (src: [][d]t) : [][d]t =
   map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
+
+let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) : *[m][k]t =
+  let nk = n*k
+  let flat_qinds = map (\i -> let (d,r) = (i / k, i % k)
+                              in qinds[d]*k + r
+                       ) (iota nk)
+  let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t)
+  in  unflatten m k res1D
 
 let unzip_matrix [n] [m] 't1 't2 (A: [n][m](t1, t2)) : ([n][m]t1, [n][m]t2) =
   let nm = n*m

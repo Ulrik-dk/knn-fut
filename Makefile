@@ -1,4 +1,4 @@
-versions = bf v1 v2
+version = v1
 backend = c
 data = data/
 
@@ -16,9 +16,9 @@ datasets:
 
 outs:
 	futhark $(backend) bf.fut
-	./bf --entry=just_distances < $(data)test1.in > $(data)test1.out
-	./bf --entry=just_distances < $(data)test2.in > $(data)test2.out
-	./bf --entry=just_distances < $(data)test3.in > $(data)test3.out
+	./bf < $(data)test1.in > $(data)test1.out
+	./bf < $(data)test2.in > $(data)test2.out
+	./bf < $(data)test3.in > $(data)test3.out
 
 clean:
 	rm -f bf bf.c
@@ -34,19 +34,20 @@ bf:
 
 v1:
 	futhark $(backend) v1.fut
+	futhark test v1.fut >
+	futhark bench v1.fut --backend=$(backend)
 
 v2:
 	futhark $(backend) v1.fut
 
-test: $(version)
+test:
 	futhark test $(version).fut --backend=$(backend)
 
-bench: $(version) $(backend)
+bench:
 	futhark bench $(version).fut --backend=$(backend)
 
-v1-test:
-	futhark dataset -b --generate=[134217728]f32 > v1.in
-	futhark c v1.fut
-	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
-	futhark opencl v1.fut
-	./v1 --entry=test -t /dev/stderr -r 3 < v1.in > /dev/null
+manual-bench:
+	@futhark $(backend) $(version).fut
+	./$(version) -t /dev/stderr -r 3 < $(data)test1.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test2.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null

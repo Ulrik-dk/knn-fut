@@ -1,5 +1,3 @@
-open import "lib/github.com/diku-dk/sorts/merge_sort"
-open import "lib/batch-merge-sort"
 open import "util"
 open import "constants"
 
@@ -22,13 +20,7 @@ let bruteForce [n][d][k] (q: [d]f32)
       then knn
       else update_knn knn (((leaf_index*n)+i), dist)
 
-let pureForceWrapper [n][m][d] (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
+  let k = GetK
   let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) f32.inf) :> *[m][k](i32,f32)
   in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix
-
---trivial brute-force knn algorithm
-entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
-  pureForceWrapper GetK P Q
-
-entry just_distances [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
-  pureForceWrapper GetK P Q |> (.1)

@@ -1,11 +1,5 @@
-
-let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) : *[m][k]t =
-  let nk = n*k
-  let flat_qinds = map (\i -> let (d,r) = (i / k, i % k)
-                              in qinds[d]*k + r
-                       ) (iota nk)
-  let res1D = scatter (flatten arr2D) flat_qinds ((flatten vals2D) :> [nk]t)
-  in  unflatten m k res1D
+open import "util"
+open import "lib/batch-merge-sort"
 
 let my_maxf32 (a: f32) (b: f32) =
     if f32.isinf a then b
@@ -14,9 +8,6 @@ let my_maxf32 (a: f32) (b: f32) =
 
 let my_minf32 (a: f32) (b: f32) =
     f32.min a b
-
--- size of leafs will be in [leaf_size_lb ... (leaf_size_lb*2)-1]
--- guarantees num_pad_elms < num_leaves
 
 let get_height (leaf_size: i32) (n: i32) : i32 =
   let num_leaves = n / leaf_size
@@ -125,7 +116,6 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     in (tree, reordered_P, original_P_inds)
 
 ----------- traversal ----------
-
 let getParent (node_index: i32) = (node_index-1) / 2
 let getLeftChild (node_index: i32) = (node_index * 2) + 1
 let getRightChild (node_index: i32) = (node_index * 2) + 2

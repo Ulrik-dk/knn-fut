@@ -1,7 +1,4 @@
-open import "lib/github.com/diku-dk/sorts/merge_sort"
-open import "lib/github.com/diku-dk/sorts/radix_sort"
 open import "lib/batch-merge-sort"
-open import "util"
 open import "bf"
 open import "constants"
 open import "common"
@@ -59,13 +56,9 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let fixed_knn_inds = gather1d (flatten ordered_all_knns.0) original_P_inds |> unflatten m k
     in (fixed_knn_inds, ordered_all_knns.1)
 
---entry main1 [n][m][d] (leaf_size_lb: i32) (P: [n][d]f32) (Q: [m][d]f32) =
---  v1 leaf_size_lb GetK P Q
-
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
-  let leaf_size_lb = 44 in
-  v2 leaf_size_lb GetK P Q |> (.1)
+  v2 GetLeafSizeLb GetK P Q |> (.1)
 
 -- ==
--- input @ test.in
--- output @ test.out
+-- input @ data/test1.in
+-- output @ data/test1.out
