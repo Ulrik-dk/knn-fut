@@ -6,7 +6,7 @@ open import "bf"
 open import "constants"
 open import "common"
 
-let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let pad_elm = replicate d f32.inf
 
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
@@ -64,7 +64,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let leaf_size_lb = 44 in
-  v1 leaf_size_lb GetK P Q |> (.1)
+  v2 leaf_size_lb GetK P Q |> (.1)
 
 -- ==
 -- input @ test.in
