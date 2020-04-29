@@ -4,27 +4,29 @@ open import "constants"
 open import "kd-tree-common"
 
 let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-    let pad_elm = replicate d f32.inf
 
+    -- pad the array of points
+    let pad_elm = replicate d f32.inf
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
 
-    let h = get_height leaf_size (length padded_P)
-    let (tree, reordered_P, original_P_inds) = build_balanced_tree padded_P h
+    -- get the height and build the balanced tree
+    let height = get_height leaf_size (length padded_P)
+    let (tree_quadruple, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
+    let (tree_dims, tree_meds, _, _) = unzip4 tree_quadruple
 
-    let num_leaves = (length padded_P) / leaf_size
-
-    let leaf_structure = unflatten_3d num_leaves leaf_size d(flatten reordered_P)
-
-    let (tree_dims, tree_meds, _, _) = unzip4 tree
-
+    -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
 
+    -- initialize the loop variables
     let stacks = replicate m 0i32
-
     let Q_inds = iota m
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
     let ordered_all_knns = copy knns
-    let ordered_all_knns = unzip_matrix <| (.0) <|
+
+    -- pick out the first element of the loop-tuple, and unzip it
+    let finished_all_knns = unzip_matrix <| (.0) <|
+
+    -- main loop
     loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
 
       -- 1. brute-force on previous leaves and ongoing queries
@@ -34,7 +36,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- 2. traverse-once to find the next leaves
       let (leaf_indices, stacks) = unzip <| map4 (\ q_ind stack leaf_index wnnd ->
-                                            traverse_once h Q[q_ind] stack leaf_index wnnd tree
+                                            traverse_once height Q[q_ind] stack leaf_index wnnd tree_dims tree_meds
                                           ) Q_inds stacks leaf_indices (map get_wnnd knns)
 
       -- 3. partition so that the queries that finished come last
@@ -51,10 +53,13 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let leaf_indices = gather1d cont_inds leaf_indices
       let stacks = gather1d cont_inds stacks
       let Q_inds = gather1d cont_inds Q_inds
+
+      -- finish iteration
       in (ordered_all_knns, knns, leaf_indices, stacks, Q_inds)
 
-    let fixed_knn_inds = gather1d (flatten ordered_all_knns.0) original_P_inds |> unflatten m k
-    in (fixed_knn_inds, ordered_all_knns.1)
+    -- change the knns p-indices so they point to their original indices and not the sorted ones
+    let fixed_knn_inds = gather1d (flatten finished_all_knns.0) original_P_inds |> unflatten m k
+    in (fixed_knn_inds, finished_all_knns.1)
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   v1 GetLeafSizeLb GetK P Q |> (.1)

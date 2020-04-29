@@ -10,9 +10,9 @@ let my_minf32 (a: f32) (b: f32) =
     f32.min a b
 
 let get_height (leaf_size: i32) (n: i32) : i32 =
-  let num_leaves = n / leaf_size
-  let h = i32_log2 num_leaves
-  in h-1
+    let num_leaves = n / leaf_size
+    let h = i32_log2 num_leaves
+    in h-1
 
 let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
     let num_default_leaves = n / leaf_size_lb
@@ -25,7 +25,7 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32), [][]f32, []i32) =
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([](i32, f32, f32, f32), [][][]f32, []i32) =
     -- the number of leaves is determined from the height
     let num_leaves = 1<<(h+1)
     -- the indices of the points
@@ -113,7 +113,9 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) : ([](i32, f32, f32, f32)
     let original_P_inds = gather1d (Pinds :> [n]i32) (iota n)
 
     -- returns the tree and the reordered points, and their relation to their original indices
-    in (tree, reordered_P, original_P_inds)
+    let leaf_structure = unflatten_3d num_leaves leaf_size d (flatten reordered_P)
+
+    in (tree, leaf_structure, original_P_inds)
 
 ----------- traversal ----------
 let getParent (node_index: i32) = (node_index-1) / 2
@@ -139,20 +141,18 @@ let traverse_once [tree_size][d]
                            (stack: i32)
                            (leaf_index: i32)
                            (wnnd: f32)
-                           (tree: [tree_size](i32, f32, f32, f32)) =
+                           (tree_dims: [tree_size]i32)
+                           (tree_meds: [tree_size]f32) =
   let getPackedInd (stk: i32) (level: i32) : bool =
     i32.get_bit level stk |> (>0)
   let setPackedInd (stk: i32) (level: i32) (v: i32) : i32 =
     i32.set_bit level stk v
 
-  let leaf_index = leaf_index + tree_size
-
-  --TODO: can this be made less deep?
-  let (tree_dims, tree_meds, _, _) = unzip4 tree
+  let tree_index = leaf_index + tree_size
 
   let (parent_index, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
-       (leaf_index, stack, -1, h)
+       (tree_index, stack, -1, h)
   while (node_index != 0) && (rec_node < 0) do
     let parent_index = getParent node_index in
     if getPackedInd stack level
@@ -170,4 +170,5 @@ let traverse_once [tree_size][d]
   in (new_leaf, stack)
 
 -- worst nearest neighbor distance
-let get_wnnd [k] (knn: [k](i32, f32)) : f32 = knn[k-1].1
+let get_wnnd [k] (knn: [k](i32, f32)) : f32 =
+    knn[k-1].1
