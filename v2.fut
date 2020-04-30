@@ -1,8 +1,14 @@
+open import "lib/github.com/diku-dk/sorts/merge_sort"
 open import "lib/github.com/diku-dk/sorts/quick_sort"
+open import "lib/github.com/diku-dk/sorts/radix_sort"
 open import "lib/batch-merge-sort"
 open import "bf"
 open import "constants"
 open import "kd-tree-common"
+
+let sort_by_fst (arr: [](i32, i32)) =
+  radix_sort_int_by_key (.0) i32.num_bits i32.get_bit arr
+  --merge_sort_by_key (.0) (<=) arr
 
 let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
@@ -28,10 +34,8 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- V2 addition begin
     -- sort the meta-data by leaf-indices
     -- since knns and stacks are all blank, we only need to sort Q_inds and leaf_indices
-    let (leaf_indices, sort_order) = unzip <| qsort_by_key (.0) (<=) (zip leaf_indices (iota m))
+    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m))
     let Q_inds = gather1d sort_order Q_inds
-
-
     -- V2 addition end
 
     let res = -- main loop
@@ -68,7 +72,7 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- 2. sort leaf_indices and reorder cont_inds according to this
       let (leaf_indices, sort_order) = unzip
-          <| qsort_by_key (.0) (<=) (zip leaf_indices (iota num_active))
+          <| sort_by_fst (zip leaf_indices (iota num_active))
 
       let cont_inds = gather1d sort_order cont_inds
 
