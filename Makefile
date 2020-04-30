@@ -14,8 +14,8 @@ datasets:
 	@futhark dataset -b --generate=[1000][4]f32 --generate=[1000][4]f32 > $(data)test2.in
 	@futhark dataset -b --generate=[5000][3]f32 --generate=[5000][3]f32 > $(data)test3.in
 	@futhark dataset -b --generate=[10000][4]f32 --generate=[10000][4]f32 > $(data)test4.in
-	@futhark dataset -b --generate=[100000][8]f32 --generate=[100000][8]f32 > $(data)test5.in
-	@futhark dataset -b --generate=[1000000][16]f32 --generate=[1000000][16]f32 > $(data)test6.in
+	@futhark dataset -b --generate=[50000][8]f32 --generate=[50000][8]f32 > $(data)test5.in
+	@futhark dataset -b --generate=[10000][24]f32 --generate=[10000][24]f32 > $(data)test6.in
 
 outs:
 	futhark $(backend) bf.fut
@@ -39,6 +39,7 @@ clean:
 	rm -f v1 v1.c
 	rm -f v2 v2.c
 	rm -f v3 v3.c
+	rm -f v4 v4.c
 
 very-clean:
 	rm -rf $(data)
@@ -57,3 +58,5 @@ v2:
 	@$(MAKE) ctb version=v2 --no-print-directory
 v3:
 	@$(MAKE) ctb version=v3 --no-print-directory
+v4:
+	@$(MAKE) ctb version=v4 --no-print-directory
