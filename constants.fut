@@ -1,2 +1,2 @@
-let GetK : i32 = 5
-let GetLeafSizeLb : i32 = 256
+let GetK : i32 = 2
+let GetLeafSizeLb : i32 = 2

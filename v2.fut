@@ -1,3 +1,4 @@
+open import "lib/github.com/diku-dk/sorts/quick_sort"
 open import "lib/batch-merge-sort"
 open import "bf"
 open import "constants"
@@ -10,6 +11,7 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
 
     -- get the height and build the balanced tree
+    -- original_P_inds is used to put correct the knns indices in the end
     let height = get_height leaf_size (length padded_P)
     let (tree_quadruple, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
     let (tree_dims, tree_meds, _, _) = unzip4 tree_quadruple
@@ -23,41 +25,57 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
     let ordered_all_knns = copy knns
 
-    -- pick out the first element of the loop-tuple, and unzip it
-    let finished_all_knns = unzip_matrix <| (.0) <|
+    -- V2 addition begin
+    -- sort the meta-data by leaf-indices
+    -- since knns and stacks are all blank, we only need to sort Q_inds and leaf_indices
+    let (leaf_indices, Q_inds) = unzip <| qsort_by_key (.0) (<=) (zip leaf_indices Q_inds)
+    -- V2 addition end
 
-    -- main loop
+    let res = -- main loop
     loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
 
-      -- 1. brute-force on previous leaves and ongoing queries
+      -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q_ind knn leaf_index ->
                     bruteForce Q[q_ind] knn leaf_structure[leaf_index] leaf_index
                   ) Q_inds knns leaf_indices
 
-      -- 2. traverse-once to find the next leaves
+      -- b. traverse-once to find the next leaves
       let (leaf_indices, stacks) = unzip <| map4 (\ q_ind stack leaf_index wnnd ->
                                             traverse_once height Q[q_ind] stack leaf_index wnnd tree_dims tree_meds
                                           ) Q_inds stacks leaf_indices (map get_wnnd knns)
 
-      -- 3. partition so that the queries that finished come last
+      -- c. partition so that the queries that finished come last
       let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length Q_inds)
 
-      -- 4. update the ordered_all_knns for the queries that have finished
+      -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
                                 (map (\i -> Q_inds[i]) done_inds)
                                 (map (\i ->   knns[i]) done_inds)
 
-      -- 5. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
-      let new_len = length cont_inds
-      let knns = gather2d cont_inds knns :> [new_len][k](i32, f32)
+      -- e. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
+      ------- V2 addition/modification begin
+      -- we want to recover cont_inds of knns, leaf_indices, stacks, Q_inds
+      -- but we want to place them, not in the order that cont_inds are in now,
+      -- but in the order they will be in when we sort them according to leaves
+
+      -- 1. gather leaf_indices
       let leaf_indices = gather1d cont_inds leaf_indices
-      let stacks = gather1d cont_inds stacks
-      let Q_inds = gather1d cont_inds Q_inds
+
+      -- 2. sort leaf_indices and reorder cont_inds according to this
+      let (leaf_indices, cont_inds) = unzip
+          <| qsort_by_key (.0) (<=) (zip leaf_indices cont_inds)
+
+      -- 3. finally, gather using this reordered cont_inds array
+      ------- V2 addition/modification end
+      let stacks =       gather1d cont_inds stacks
+      let Q_inds =       gather1d cont_inds Q_inds
+      let knns =         gather2d cont_inds knns
 
       -- finish iteration
       in (ordered_all_knns, knns, leaf_indices, stacks, Q_inds)
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
+    let finished_all_knns = unzip_matrix <| (.0) <| res
     let fixed_knn_inds = gather1d (flatten finished_all_knns.0) original_P_inds |> unflatten m k
     in (fixed_knn_inds, finished_all_knns.1)
 
