@@ -1,5 +1,5 @@
-version = v1
-backend = c
+version = v2
+backend = opencl
 data = data/
 
 setup:
