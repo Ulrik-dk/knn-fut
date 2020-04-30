@@ -14,7 +14,7 @@ datasets:
 	@futhark dataset -b --generate=[1000][4]f32 --generate=[1000][4]f32 > $(data)test2.in
 	@futhark dataset -b --generate=[5000][3]f32 --generate=[5000][3]f32 > $(data)test3.in
 	@futhark dataset -b --generate=[10000][4]f32 --generate=[10000][4]f32 > $(data)test4.in
-	#@futhark dataset -b --generate=[100000][16]f32 --generate=[100000][16]f32 > $(data)test5.in
+	@futhark dataset -b --generate=[100000][16]f32 --generate=[100000][16]f32 > $(data)test5.in
 
 outs:
 	futhark $(backend) bf.fut
@@ -22,7 +22,7 @@ outs:
 	./bf < $(data)test2.in > $(data)test2.out
 	./bf < $(data)test3.in > $(data)test3.out
 	./bf < $(data)test4.in > $(data)test4.out
-	#./bf < $(data)test5.in > $(data)test5.out
+	./bf < $(data)test5.in > $(data)test5.out
 
 clean:
 	rm -f bf bf.c
@@ -41,7 +41,7 @@ run_benchmarks: $(version)
 	./$(version) -t /dev/stderr -r 3 < $(data)test2.in > /dev/null
 	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
 	./$(version) -t /dev/stderr -r 3 < $(data)test4.in > /dev/null
-	#./$(version) -t /dev/stderr -r 3 < $(data)test5.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test5.in > /dev/null
 
 v1:
 	futhark $(backend) v1.fut
