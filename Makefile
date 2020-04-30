@@ -1,5 +1,5 @@
-version = v2
-backend = c
+version = v6
+backend = opencl
 data = data/
 
 setup:
@@ -12,15 +12,34 @@ datasets:
 	@mkdir data &> /dev/null
 	@futhark dataset -b --generate=[32768][3]f32 --generate=[32768][3]f32 > $(data)test1.in
 	@futhark dataset -b --generate=[65536][8]f32 --generate=[65536][8]f32 > $(data)test2.in
+	@futhark dataset -b --generate=[262144][4]f32 --generate=[262144][4]f32 > $(data)test3.in
+	@futhark dataset -b --generate=[131072][8]f32 --generate=[131072][8]f32 > $(data)test4.in
+	@futhark dataset -b --generate=[65536][16]f32 --generate=[65536][16]f32 > $(data)test5.in
 
 outs:
 	futhark $(backend) bf.fut
 	./bf < $(data)test1.in > $(data)test1.out
 	./bf < $(data)test2.in > $(data)test2.out
+	futhark $(backend) v3.fut
+	./v3 < $(data)test3.in > $(data)test3.out
+	./v3 < $(data)test4.in > $(data)test4.out
+	./v3 < $(data)test5.in > $(data)test5.out
+
+compile_all:
+	futhark $(backend) bf.fut
+	futhark $(backend) v1.fut
+	futhark $(backend) v2.fut
+	futhark $(backend) v3.fut
+	futhark $(backend) v4.fut
+	futhark $(backend) v5.fut
+	futhark $(backend) v6.fut
+	futhark $(backend) v7.fut
+	futhark $(backend) v8.fut
 
 run_benchmarks:
-	./$(version) -t /dev/stderr -r 3 < $(data)test1.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test2.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test4.in > /dev/null
+	./$(version) -t /dev/stderr -r 3 < $(data)test5.in > /dev/null
 
 clean:
 	rm -f bf bf.c
@@ -29,6 +48,9 @@ clean:
 	rm -f v3 v3.c
 	rm -f v4 v4.c
 	rm -f v5 v5.c
+	rm -f v6 v6.c
+	rm -f v7 v7.c
+	rm -f v8 v8.c
 
 very-clean:
 	rm -rf $(data)
@@ -51,17 +73,29 @@ v4:
 	@$(MAKE) ctb version=v4 --no-print-directory
 v5:
 	@$(MAKE) ctb version=v5 --no-print-directory
+v6:
+	@$(MAKE) ctb version=v6 --no-print-directory
+v7:
+	@$(MAKE) ctb version=v7 --no-print-directory
+v8:
+	@$(MAKE) ctb version=v8 --no-print-directory
 
 test_all:
 	futhark test v1.fut --backend=$(backend)
 	futhark test v2.fut --backend=$(backend)
 	futhark test v3.fut --backend=$(backend)
-	futhark test v5.fut --backend=$(backend)
 	futhark test v4.fut --backend=$(backend)
+	futhark test v5.fut --backend=$(backend)
+	futhark test v6.fut --backend=$(backend)
+	futhark test v7.fut --backend=$(backend)
+	futhark test v8.fut --backend=$(backend)
 
 bench_all:
-	futhark bench v1.fut --backend=$(backend)
-	futhark bench v2.fut --backend=$(backend)
-	futhark bench v3.fut --backend=$(backend)
-	futhark bench v5.fut --backend=$(backend)
-	futhark bench v4.fut --backend=$(backend)
+	@$(MAKE) run_benchmarks version=v1 --no-print-directory
+	@$(MAKE) run_benchmarks version=v2 --no-print-directory
+	@$(MAKE) run_benchmarks version=v3 --no-print-directory
+	@$(MAKE) run_benchmarks version=v4 --no-print-directory
+	@$(MAKE) run_benchmarks version=v5 --no-print-directory
+	@$(MAKE) run_benchmarks version=v6 --no-print-directory
+	@$(MAKE) run_benchmarks version=v7 --no-print-directory
+	@$(MAKE) run_benchmarks version=v8 --no-print-directory
