@@ -10,18 +10,16 @@ let special_test [d] (q: [d]f32)
                      (wnnd: f32)
                      (lb: [d]f32)
                      (ub: [d]f32) : bool =
-    let acc =
-    loop acc = 0f32 for j < d do
+    let acc = loop acc = 0f32 for j < d do
       let var = q[j]
-      let ub_var = ub[j]
-      let lb_var = lb[j]
-      let above = var > ub_var
-      let below = var < lb_var
-      in match (below, above)
-         case (false, false) -> acc  -- within "box"
-         case (false,  true) -> acc + (f32.abs (ub_var - var)) -- above
-         case (true,  false) -> acc + (f32.abs (var - lb_var)) -- below
-         -- are the f32.abs nessisary?
+      let u = ub[j]
+      let l = lb[j]
+      let dif = if var > u
+                then u - var
+                else if var < l
+                     then var - l
+                     else 0.0f32
+      in acc + (dif*dif)
     in (f32.sqrt acc) < wnnd
 
 let traverse_once [tree_size][tree_size_plus][d]
@@ -53,7 +51,9 @@ let traverse_once [tree_size][tree_size_plus][d]
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
       --- Test if this or both
-      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
+      if
+        (special_test q wnnd lbs[sibling_index] ubs[sibling_index])
+        --((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
       then (parent_index, setPackedInd stack level 1, sibling_index, level)
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
