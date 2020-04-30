@@ -96,3 +96,6 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
 -- ==
 -- input @ data/test1.in
 -- output @ data/test1.out
+--
+-- compiled random input {  [4194304][4]f32 [4194304][4]f32 }
+
