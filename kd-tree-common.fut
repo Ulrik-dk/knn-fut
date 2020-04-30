@@ -25,32 +25,29 @@ let pad 't [n] (P: [n]t) (pad_elm: t) (leaf_size_lb: i32) : ([]t, i32) =
 
 -- P: set of n d-dimensional points with padding
 -- h: height of the tree to be constructed
-let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([](i32, f32, f32, f32), [][][]f32, []i32) =
-    -- the number of leaves is determined from the height
+let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([]i32, []f32, [][]f32, [][]f32, [][][]f32, []i32) =
     let num_leaves = 1<<(h+1)
-    -- the indices of the points
     let Pinds = iota n
-    -- the number of nodes in the tree from the number of leaves
     let num_tree_nodes = num_leaves - 1
+    let num_bounds = num_tree_nodes + num_leaves
 
-    -- the tree itself, empty to begin with
-    let tree = zip4 (replicate num_tree_nodes 0i32) (replicate num_tree_nodes 0.0f32) (replicate num_tree_nodes 0.0f32) (replicate num_tree_nodes 0.0f32)
+    let tree_dims = replicate num_tree_nodes 0i32
+    let tree_meds = replicate num_tree_nodes 0.0f32
+    let global_lbs = replicate (num_bounds*d) 0.0f32 |> unflatten num_bounds d
+    let global_ubs = replicate (num_bounds*d) 0.0f32 |> unflatten num_bounds d
 
     -- building the tree and sorting the inds of the points in a loop,
     -- one loop for every level of the tree
-    let (tree, Pinds) = loop (tree, Pinds) for depth < (h+1) do
+    let (tree_dims, tree_meds, global_lbs, global_ubs, Pinds) =
+    loop (tree_dims, tree_meds, global_lbs, global_ubs, Pinds) for depth < (h+1) do
       -- each segment corresponds to the set of points split by a
       -- given node at the current level, and we look at that segment
       -- in order to create the node
-
-      -- the length of the segment in each node at the current level
       let segment_len = n >> depth
-
-      -- the number of nodes at the current level in the tree
-      let segment_cnt = n / segment_len
+      let segment_count = n / segment_len
 
       -- unflattening the point inds st. each node has easy access
-      let segment_Pinds = unflatten segment_cnt segment_len Pinds
+      let segment_Pinds = unflatten segment_count segment_len Pinds
 
       -- mapping over iota over the number of nodes in the current level
       -- creates the indices into the tree for each new dim-median pair
@@ -65,22 +62,23 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([](i3
                         ) segment_Pinds
 
       -- for every segment, the dimension chosen, and the upper and lower bounds for that dimension
-      let (dim_inds, ubs, lbs) =
+      let (dim_inds, lbs, ubs) =
                   unzip3 <|
                   map (\i ->
                     let my_segment_T = transpose my_segments[i] |> intrinsics.opaque
                     let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_segment_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_segment_T |> intrinsics.opaque
                     let difs = map2(-) maxs mins |> intrinsics.opaque
+                    -- TODO: does this hnadle infs correctly?
                     let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
                         else (dif2, i2)
                       ) (f32.lowest, -1i32) (zip difs (iota d))
-                    in (dim_ind, maxs[dim_ind], mins[dim_ind])
-                  ) <| iota segment_cnt
+                    in (dim_ind, mins, maxs)
+                  ) <| iota segment_count
 
-      let values_indices = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segments[i]) segment_Pinds[i] ) <| iota segment_cnt
+      let values_indices = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segments[i]) segment_Pinds[i] ) <| iota segment_count
 
       -- the index is only a passenger, so the value we put in the neutral element does not matter
       -- COSMIN: here (f32.highest, segment_len) are the elements by which mergeSorts
@@ -97,15 +95,20 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([](i3
           let median = sorted_values[i,(segment_len-1)/2]
 
           -- index to place this median-value/dim-ind pair into the tree
-          let t_ind = i + segment_cnt - 1
+          let t_ind = i + segment_count - 1
           in (t_ind, median)
-        ) <| iota segment_cnt
+        ) <| iota segment_count
 
       -- putting the new tree-medians and dimensions onto the tree
-      let tree = scatter tree t_inds (zip4 dim_inds dims_medians ubs lbs)
+      let tree_dims  = scatter tree_dims  t_inds dim_inds
+      let tree_meds  = scatter tree_meds  t_inds dims_medians
+      let global_lbs = scatter global_lbs t_inds lbs
+      let global_ubs = scatter global_ubs t_inds ubs
 
       -- continuing the loop
-      in (tree, (flatten sorted_Pinds))
+      in (tree_dims, tree_meds, global_lbs, global_ubs, (flatten sorted_Pinds))
+
+    -- END OF LOOP
 
     -- "sorts" the points P such that they now align with the new ordering of the inds
     let reordered_P = gather2d (Pinds :> [n]i32) P
@@ -115,7 +118,23 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([](i3
     -- returns the tree and the reordered points, and their relation to their original indices
     let leaf_structure = unflatten_3d num_leaves leaf_size d (flatten reordered_P)
 
-    in (tree, leaf_structure, original_P_inds)
+    -- TODO: move all this into the tree-construction
+    let (leaf_structure_lbs, leaf_structure_ubs) =
+                unzip <|
+                map (\i ->
+                  let my_segment_T = transpose leaf_structure[i] |> intrinsics.opaque
+                  let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_segment_T |> intrinsics.opaque
+                  let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_segment_T |> intrinsics.opaque
+                  in (mins, maxs)
+                ) <| iota (length leaf_structure)
+
+    let leaf_structure_lbs = leaf_structure_lbs :> [num_leaves][d]f32
+    let leaf_structure_ubs = leaf_structure_ubs :> [num_leaves][d]f32
+
+    let inds_of_leaf_bounds = map (+num_tree_nodes) <| iota num_leaves
+    let global_lbs = scatter global_lbs inds_of_leaf_bounds leaf_structure_lbs
+    let global_ubs = scatter global_ubs inds_of_leaf_bounds leaf_structure_ubs
+    in (tree_dims, tree_meds, global_lbs, global_ubs, leaf_structure, original_P_inds)
 
 ----------- traversal ----------
 let getParent (node_index: i32) = (node_index-1) / 2
@@ -128,7 +147,10 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
     in  leaf_ind + (1<<(h+1)) - 1
 
 -- i is the starting-index into the tree.
-let find_natural_leaf [d][tree_size] (i: i32) (q: [d]f32) (tree_dims: [tree_size]i32) (tree_meds: [tree_size]f32) : i32 =
+let find_natural_leaf [tree_size][d]
+                      (i: i32) (q: [d]f32)
+                      (tree_dims: [tree_size]i32)
+                      (tree_meds: [tree_size]f32) : i32 =
     let i = loop i while (i < tree_size) do
       if (q[tree_dims[i]] < tree_meds[i])
         then getLeftChild(i)
@@ -159,9 +181,9 @@ let traverse_once [tree_size][d]
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
-      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
-        then (parent_index, setPackedInd stack level 0, rec_node, level-1)
-        else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
+      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
+        then (parent_index, setPackedInd stack level 1, getSibling node_index, level)
+        else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
   let new_leaf =
     if rec_node == -1 && parent_index == 0

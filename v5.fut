@@ -10,28 +10,19 @@ let special_test [d] (q: [d]f32)
                      (wnnd: f32)
                      (lb: [d]f32)
                      (ub: [d]f32) : bool =
-
-    let (ci, nearest_point_on_hc_surface) =
-    loop (ci, nearest_point_on_hc_surface) = (true, (replicate d 0f32)) for j < d do
+    let acc =
+    loop acc = 0f32 for j < d do
       let var = q[j]
       let ub_var = ub[j]
       let lb_var = lb[j]
-      let is_above = var > ub_var
-      let is_below = var < lb_var
-      let is_inside = !(is_above || is_below)
-
-      let nearest_point_on_hc_surface[j] = match (is_above, is_below, is_inside)
-                        case (_, _, true) -> var -- my own value is closest
-                        case (true, _, _) -> ub_var   -- ub_var
-                        case (_, true, _) -> lb_var
-
-      in (ci && is_inside, nearest_point_on_hc_surface)
-    in if ci
-       then true
-       else (my_dist q nearest_point_on_hc_surface) < wnnd
-    -- if q is withing lb-ub hypercube, true
-    -- if q is outside, then the distance to the nearest_point_on_hc_surface
-    -- must be shorter than wnnd for us to not be able to rule the branch out
+      let above = var > ub_var
+      let below = var < lb_var
+      in match (below, above)
+         case (false, false) -> acc  -- within "box"
+         case (false,  true) -> acc + (f32.abs (ub_var - var)) -- above
+         case (true,  false) -> acc + (f32.abs (var - lb_var)) -- below
+         -- are the f32.abs nessisary?
+    in (f32.sqrt acc) < wnnd
 
 let traverse_once [tree_size][tree_size_plus][d]
                            (h: i32)
@@ -61,8 +52,8 @@ let traverse_once [tree_size][tree_size_plus][d]
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
-      if (((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
-         && (special_test q wnnd lbs[sibling_index] ubs[sibling_index]))
+      --- Test if this or both
+      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
       then (parent_index, setPackedInd stack level 1, sibling_index, level)
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
@@ -71,6 +62,9 @@ let traverse_once [tree_size][tree_size_plus][d]
       then -1 -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
+
+let sort_by_fst (arr: [](i32, i32)) (num_bits_to_sort: i32) =
+  radix_sort_int_by_key (.0) num_bits_to_sort i32.get_bit arr
 
 let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
@@ -81,15 +75,17 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- get the height and build the balanced tree
     -- original_P_inds is used to put correct the knns indices in the end
     let height = get_height leaf_size (length padded_P)
-    let (tree_quadruple, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
-    let (tree_dims, tree_meds, lbs, ubs) = unzip4 tree_quadruple
+    let (tree_dims, tree_meds, global_lbs, global_ubs, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
 
-    -- V4 addition start
+    let size_promise = length tree_dims
+    let tree_dims = tree_dims :> [size_promise]i32
+    let tree_meds = tree_meds :> [size_promise]f32
+
+    let size_promise = length global_lbs
+    let global_lbs = global_lbs :> [size_promise][d]f32
+    let global_ubs = global_ubs :> [size_promise][d]f32
+
     let num_bits_to_sort = height + 2
-    let sort_by_fst (arr: [](i32, i32)) =
-      radix_sort_int_by_key (.0) num_bits_to_sort i32.get_bit arr
-      --merge_sort_by_key (.0) (<=) arr
-    -- V4 addition end
 
     -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
@@ -99,17 +95,14 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
     let ordered_all_knns = copy knns
 
-    -- V2 addition begin
     -- sort the meta-data by leaf-indices
     -- since knns and stacks are all blank, we only need to sort Q and leaf_indices
-    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m))
-    -- V2 addition end
-    -- V3 addition begin
+    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
     let Q = gather2d sort_order Q
-    -- V3 addition end
+    let Q_inds = gather1d sort_order <| iota m
 
     let res = -- main loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q) while (length leaf_indices > 0) do
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
 
       -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q knn leaf_index ->
@@ -118,7 +111,7 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- b. traverse-once to find the next leaves
       let (leaf_indices, stacks) = unzip <| map4 (\ q stack leaf_index wnnd ->
-                                            traverse_once height q stack leaf_index wnnd tree_dims tree_meds lbs ubs
+                                            traverse_once height q stack leaf_index wnnd tree_dims tree_meds global_lbs global_ubs
                                           ) Q stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
@@ -126,12 +119,11 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
-                                done_inds
+                                (map (\i -> Q_inds[i]) done_inds)
                                 (map (\i ->   knns[i]) done_inds)
 
       -- e. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
-      ------- V2 addition/modification begin
-      -- we want to recover cont_inds of knns, leaf_indices, stacks, Q
+      -- we want to recover cont_inds of knns, leaf_indices, stacks, Q_inds, Q
       -- but we want to place them, not in the order that cont_inds are in now,
       -- but in the order they will be in when we sort them according to leaves
 
@@ -142,21 +134,18 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- 2. sort leaf_indices and reorder cont_inds according to this
       let (leaf_indices, sort_order) = unzip
-          <| sort_by_fst (zip leaf_indices (iota num_active))
+          <| sort_by_fst (zip leaf_indices (iota num_active)) num_bits_to_sort
 
       let cont_inds = gather1d sort_order cont_inds
 
-      -- V3 addition begin
-      let Q = gather2d cont_inds Q
-      -- V3 addition end
-
       -- 3. finally, gather using this reordered cont_inds array
-      ------- V2 addition/modification end
-      let stacks =       gather1d cont_inds stacks
-      let knns =         gather2d cont_inds knns
+      let stacks = gather1d cont_inds stacks
+      let Q_inds = gather1d cont_inds Q_inds
+      let knns = gather2d cont_inds knns
+      let Q = gather2d cont_inds Q
 
       -- finish iteration
-      in (ordered_all_knns, knns, leaf_indices, stacks, Q)
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
     let finished_all_knns = unzip_matrix <| (.0) <| res
@@ -166,7 +155,6 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   v5 GetLeafSizeLb GetK P Q |> (.1)
 
--- ==
 -- ==
 -- input @ data/test1.in
 -- output @ data/test1.out

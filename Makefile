@@ -1,5 +1,5 @@
 version = v2
-backend = opencl
+backend = c
 data = data/
 
 setup:
@@ -10,29 +10,17 @@ setup:
 
 datasets:
 	@mkdir data &> /dev/null
-	@futhark dataset -b --generate=[100][30]f32 --generate=[100][30]f32 > $(data)test1.in
-	@futhark dataset -b --generate=[1000][4]f32 --generate=[1000][4]f32 > $(data)test2.in
-	@futhark dataset -b --generate=[5000][3]f32 --generate=[5000][3]f32 > $(data)test3.in
-	@futhark dataset -b --generate=[10000][4]f32 --generate=[10000][4]f32 > $(data)test4.in
-	@futhark dataset -b --generate=[50000][8]f32 --generate=[50000][8]f32 > $(data)test5.in
-	@futhark dataset -b --generate=[10000][24]f32 --generate=[10000][24]f32 > $(data)test6.in
+	@futhark dataset -b --generate=[32768][3]f32 --generate=[32768][3]f32 > $(data)test1.in
+	@futhark dataset -b --generate=[65536][8]f32 --generate=[65536][8]f32 > $(data)test2.in
 
 outs:
 	futhark $(backend) bf.fut
 	./bf < $(data)test1.in > $(data)test1.out
 	./bf < $(data)test2.in > $(data)test2.out
-	./bf < $(data)test3.in > $(data)test3.out
-	./bf < $(data)test4.in > $(data)test4.out
-	./bf < $(data)test5.in > $(data)test5.out
-	#./bf < $(data)test6.in > $(data)test6.out
 
 run_benchmarks:
 	./$(version) -t /dev/stderr -r 3 < $(data)test1.in > /dev/null
 	./$(version) -t /dev/stderr -r 3 < $(data)test2.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test4.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test5.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test6.in > /dev/null
 
 clean:
 	rm -f bf bf.c
@@ -40,6 +28,7 @@ clean:
 	rm -f v2 v2.c
 	rm -f v3 v3.c
 	rm -f v4 v4.c
+	rm -f v5 v5.c
 
 very-clean:
 	rm -rf $(data)
@@ -60,3 +49,19 @@ v3:
 	@$(MAKE) ctb version=v3 --no-print-directory
 v4:
 	@$(MAKE) ctb version=v4 --no-print-directory
+v5:
+	@$(MAKE) ctb version=v5 --no-print-directory
+
+test_all:
+	futhark test v1.fut --backend=$(backend)
+	futhark test v2.fut --backend=$(backend)
+	futhark test v3.fut --backend=$(backend)
+	futhark test v5.fut --backend=$(backend)
+	futhark test v4.fut --backend=$(backend)
+
+bench_all:
+	futhark bench v1.fut --backend=$(backend)
+	futhark bench v2.fut --backend=$(backend)
+	futhark bench v3.fut --backend=$(backend)
+	futhark bench v5.fut --backend=$(backend)
+	futhark bench v4.fut --backend=$(backend)

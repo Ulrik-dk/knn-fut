@@ -12,8 +12,11 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- get the height and build the balanced tree
     -- original_P_inds is used to put correct the knns indices in the end
     let height = get_height leaf_size (length padded_P)
-    let (tree_quadruple, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
-    let (tree_dims, tree_meds, _, _) = unzip4 tree_quadruple
+    let (tree_dims, tree_meds, _, _, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
+
+    let size_promise = length tree_dims
+    let tree_dims = tree_dims :> [size_promise]i32
+    let tree_meds = tree_meds :> [size_promise]f32
 
     -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
@@ -38,7 +41,7 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
                                           ) Q_inds stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
-      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length Q_inds)
+      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
 
       -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
@@ -65,3 +68,5 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
 -- ==
 -- input @ data/test1.in
 -- output @ data/test1.out
+-- input @ data/test2.in
+-- output @ data/test2.out
