@@ -33,8 +33,6 @@ compile_all:
 	futhark $(backend) v4.fut
 	futhark $(backend) v5.fut
 	futhark $(backend) v6.fut
-	futhark $(backend) v7.fut
-	futhark $(backend) v8.fut
 
 run_benchmarks:
 	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
@@ -49,8 +47,6 @@ clean:
 	rm -f v4 v4.c
 	rm -f v5 v5.c
 	rm -f v6 v6.c
-	rm -f v7 v7.c
-	rm -f v8 v8.c
 
 very-clean:
 	rm -rf $(data)
@@ -75,10 +71,6 @@ v5:
 	@$(MAKE) ctb version=v5 --no-print-directory
 v6:
 	@$(MAKE) ctb version=v6 --no-print-directory
-v7:
-	@$(MAKE) ctb version=v7 --no-print-directory
-v8:
-	@$(MAKE) ctb version=v8 --no-print-directory
 
 test_all:
 	futhark test v1.fut --backend=$(backend)
@@ -87,8 +79,6 @@ test_all:
 	futhark test v4.fut --backend=$(backend)
 	futhark test v5.fut --backend=$(backend)
 	futhark test v6.fut --backend=$(backend)
-	futhark test v7.fut --backend=$(backend)
-	futhark test v8.fut --backend=$(backend)
 
 bench_all:
 	@$(MAKE) run_benchmarks version=v1 --no-print-directory
@@ -97,5 +87,3 @@ bench_all:
 	@$(MAKE) run_benchmarks version=v4 --no-print-directory
 	@$(MAKE) run_benchmarks version=v5 --no-print-directory
 	@$(MAKE) run_benchmarks version=v6 --no-print-directory
-	@$(MAKE) run_benchmarks version=v7 --no-print-directory
-	@$(MAKE) run_benchmarks version=v8 --no-print-directory
