@@ -69,7 +69,7 @@ let build_balanced_tree [n][d] (P: [n][d]f32) (h: i32) (leaf_size: i32) : ([]i32
                     let mins = map (\row -> reduce_comm my_minf32 f32.highest row) my_segment_T |> intrinsics.opaque
                     let maxs = map (\row -> reduce_comm my_maxf32 f32.lowest row) my_segment_T |> intrinsics.opaque
                     let difs = map2(-) maxs mins |> intrinsics.opaque
-                    -- TODO: does this hnadle infs correctly?
+                    -- TODO: does this handle infs correctly?
                     let (_, dim_ind) = reduce_comm (\(dif1, i1) (dif2, i2) ->
                       if(dif1 > dif2)
                         then (dif1, i1)
@@ -152,9 +152,9 @@ let find_natural_leaf [tree_size][d]
                       (tree_dims: [tree_size]i32)
                       (tree_meds: [tree_size]f32) : i32 =
     let i = loop i while (i < tree_size) do
-      if (q[tree_dims[i]] < tree_meds[i])
-        then getLeftChild(i)
-        else getRightChild(i)
+      if (q[tree_dims[i]] >= tree_meds[i])
+        then getRightChild(i)
+        else getLeftChild(i)
     in i - tree_size
 
 let traverse_once [tree_size][d]
@@ -181,9 +181,9 @@ let traverse_once [tree_size][d]
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
-      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
-        then (parent_index, setPackedInd stack level 1, getSibling node_index, level)
-        else (parent_index, setPackedInd stack level 0, rec_node, level-1)
+      if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
+        then (parent_index, setPackedInd stack level 0, rec_node, level-1)
+        else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
   let new_leaf =
     if rec_node == -1 && parent_index == 0
