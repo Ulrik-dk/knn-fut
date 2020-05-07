@@ -152,7 +152,8 @@ let find_natural_leaf [tree_size][d]
                       (tree_dims: [tree_size]i32)
                       (tree_meds: [tree_size]f32) : i32 =
     let i = loop i while (i < tree_size) do
-      if (q[tree_dims[i]] >= tree_meds[i])
+    -- TODO: consider whether this comparator handles edge-cases optimally
+      if (q[tree_dims[i]] > tree_meds[i])
         then getRightChild(i)
         else getLeftChild(i)
     in i - tree_size
@@ -181,6 +182,7 @@ let traverse_once [tree_size][d]
     then -- sibling (second node) already visited, go up the tree
       (parent_index, setPackedInd stack level 0, rec_node, level-1)
     else
+      -- TODO: consider whether this comparator handles edge-cases optimally
       if ((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) >= wnnd)
         then (parent_index, setPackedInd stack level 0, rec_node, level-1)
         else (parent_index, setPackedInd stack level 1, getSibling node_index, level)

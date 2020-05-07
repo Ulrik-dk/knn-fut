@@ -24,3 +24,15 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let k = GetK
   let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) f32.inf) :> *[m][k](i32,f32)
   in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix |> (.1)
+
+-- ==
+-- input @ data/test1.in
+-- output @ data/test1.out
+-- input @ data/test2.in
+-- output @ data/test2.out
+-- input @ data/test3.in
+-- output @ data/test3.out
+-- input @ data/test4.in
+-- output @ data/test4.out
+-- input @ data/test5.in
+-- output @ data/test5.out

@@ -69,7 +69,7 @@ let sort_by_fst (arr: [](i32, i32)) (num_bits_to_sort: i32) =
 let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     -- pad the array of points
-    let pad_elm = replicate d f32.inf
+    let pad_elm = replicate d GetPadValue
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
 
     -- get the height and build the balanced tree

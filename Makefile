@@ -57,24 +57,6 @@ very-clean:
 	rm -rf $(data)
 	@$(MAKE) clean --no-print-directory
 
-ctb: #compile test benchmark
-	futhark $(backend) $(version).fut
-	futhark test $(version).fut
-	@$(MAKE) run_benchmarks
-
-bf:
-	@$(MAKE) ctb version=bf --no-print-directory
-v1:
-	@$(MAKE) ctb version=v1 --no-print-directory
-v2:
-	@$(MAKE) ctb version=v2 --no-print-directory
-v3:
-	@$(MAKE) ctb version=v3 --no-print-directory
-v4:
-	@$(MAKE) ctb version=v4 --no-print-directory
-v5:
-	@$(MAKE) ctb version=v5 --no-print-directory
-
 test_all:
 	futhark test v1.fut --backend=$(backend)
 	futhark test v2.fut --backend=$(backend)
