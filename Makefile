@@ -31,6 +31,7 @@ compile_all:
 	futhark $(backend) v3.fut -w
 	futhark $(backend) v4.fut -w
 	futhark $(backend) v5.fut -w
+	futhark $(backend) v6.fut -w
 
 run_builtin_benchmarks:
 	futhark bench bf.fut --backend=$(backend) -r 3 --skip-compilation
@@ -39,6 +40,7 @@ run_builtin_benchmarks:
 	futhark bench v3.fut --backend=$(backend) -r 3 --skip-compilation
 	futhark bench v4.fut --backend=$(backend) -r 3 --skip-compilation
 	futhark bench v5.fut --backend=$(backend) -r 3 --skip-compilation
+	futhark bench v6.fut --backend=$(backend) -r 3 --skip-compilation
 
 run_benchmarks:
 	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
@@ -52,6 +54,7 @@ clean:
 	rm -f v3 v3.c
 	rm -f v4 v4.c
 	rm -f v5 v5.c
+	rm -f v6 v6.c
 
 very-clean:
 	rm -rf $(data)
@@ -63,6 +66,7 @@ test_all:
 	futhark test v3.fut --backend=$(backend)
 	futhark test v4.fut --backend=$(backend)
 	futhark test v5.fut --backend=$(backend)
+	futhark test v6.fut --backend=$(backend)
 
 bench_all:
 	@$(MAKE) run_benchmarks version=v1 --no-print-directory
@@ -70,3 +74,4 @@ bench_all:
 	@$(MAKE) run_benchmarks version=v3 --no-print-directory
 	@$(MAKE) run_benchmarks version=v4 --no-print-directory
 	@$(MAKE) run_benchmarks version=v5 --no-print-directory
+	@$(MAKE) run_benchmarks version=v6 --no-print-directory
