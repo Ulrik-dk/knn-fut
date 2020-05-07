@@ -160,3 +160,9 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
 -- output @ data/test1.out
 -- input @ data/test2.in
 -- output @ data/test2.out
+-- input @ data/test3.in
+-- output @ data/test3.out
+-- input @ data/test4.in
+-- output @ data/test4.out
+-- input @ data/test5.in
+-- output @ data/test5.out
