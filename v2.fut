@@ -90,13 +90,3 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   v2 GetLeafSizeLb GetK P Q |> (.1)
-
--- ==
--- compiled random input { [131072][5]f32  [131072][5]f32 }
--- compiled random input { [131072][5]f32  [131072][5]f32 }
--- compiled random input { [524288][5]f32  [524288][5]f32 }
--- compiled random input { [1048576][5]f32 [1048576][5]f32 }
--- compiled random input { [2097152][5]f32 [2097152][5]f32 }
--- compiled random input { [4194304][5]f32 [4194304][5]f32 }
--- compiled random input { [8388608][5]f32 [8388608][5]f32 }
--- compiled random input { [8388608][5]f32 [16777216][5]f32 }

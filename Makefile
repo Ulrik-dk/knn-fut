@@ -1,77 +1,46 @@
 version = v5
 backend = opencl
 data = data/
+TARGETS = bf v1 v2 v3 v4 v5
+TESTS = test1 test2 test3 test4 test5 test6
 
 setup:
 	@$(MAKE) very-clean --no-print-directory
-	@$(MAKE) datasets --no-print-directory
-	@$(MAKE) compile_all --no-print-directory
+	@$(MAKE) compile --no-print-directory
+	@$(MAKE) ins --no-print-directory
 	@$(MAKE) outs --no-print-directory
-	@$(MAKE) run_builtin_benchmarks --no-print-directory
-
-datasets:
+	@echo "You can now type 'make test' or 'make bench'"
+ins:
+	@rm -rf data
 	@mkdir data &> /dev/null
-	@futhark dataset -b --generate=[200000][5]f32 --generate=[20000][5]f32 > $(data)test1.in
-	@futhark dataset -b --generate=[200000][7]f32 --generate=[20000][7]f32 > $(data)test2.in
-	@futhark dataset -b --generate=[200000][9]f32 --generate=[20000][9]f32 > $(data)test3.in
-	@futhark dataset -b --generate=[200000][11]f32 --generate=[20000][11]f32 > $(data)test4.in
-	@futhark dataset -b --generate=[200000][20]f32 --generate=[20000][20]f32 > $(data)test5.in
+	@futhark dataset -b --generate=[1][1]f32 --generate=[1][1]f32 > $(data)test1.in
+	@futhark dataset -b --generate=[500][200]f32 --generate=[500][200]f32 > $(data)test2.in
+	@futhark dataset -b --generate=[5000][11]f32 --generate=[5000][11]f32 > $(data)test3.in
+	@futhark dataset -b --generate=[50000][3]f32 --generate=[50000][3]f32 > $(data)test4.in
+	@futhark dataset -b --generate=[1][5]f32 --generate=[500000][5]f32 > $(data)test5.in
+	@futhark dataset -b --generate=[500000][5]f32 --generate=[1][5]f32 > $(data)test6.in
+out_%:
+	./bf < $(data)$*.in > $(data)$*.out
+outs: $(TESTS:%=out_%)
 
-outs:
-	./bf < $(data)test1.in > $(data)test1.out
-	./bf < $(data)test2.in > $(data)test2.out
-	./v3 < $(data)test3.in > $(data)test3.out
-	./v3 < $(data)test4.in > $(data)test4.out
-	./v3 < $(data)test5.in > $(data)test5.out
+compile_%:
+	futhark $(backend) $*.fut -w
+	futhark $(backend) $*-bench.fut -w
+	futhark $(backend) $*-test.fut -w
+compile: $(TARGETS:%=compile_%)
 
-compile_all:
-	futhark $(backend) bf.fut -w
-	futhark $(backend) v1.fut -w
-	futhark $(backend) v2.fut -w
-	futhark $(backend) v3.fut -w
-	futhark $(backend) v4.fut -w
-	futhark $(backend) v5.fut -w
-	futhark $(backend) v6.fut -w
+run_test_%:
+	futhark test $*-test.fut --backend=$(backend)
+test: $(TARGETS:%=run_test_%)
 
-run_builtin_benchmarks:
-	futhark bench bf.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v1.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v2.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v3.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v4.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v5.fut --backend=$(backend) -r 3 --skip-compilation
-	futhark bench v6.fut --backend=$(backend) -r 3 --skip-compilation
+run_bench_%:
+	futhark bench $*-bench.fut --backend=$(backend) --skip-compilation -r 3
+bench: $(TARGETS:%=run_bench_%)
 
-run_benchmarks:
-	./$(version) -t /dev/stderr -r 3 < $(data)test3.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test4.in > /dev/null
-	./$(version) -t /dev/stderr -r 3 < $(data)test5.in > /dev/null
-
-clean:
-	rm -f bf bf.c
-	rm -f v1 v1.c
-	rm -f v2 v2.c
-	rm -f v3 v3.c
-	rm -f v4 v4.c
-	rm -f v5 v5.c
-	rm -f v6 v6.c
+clean_thing_%:
+	rm -f $* $*.c $*-bench $*-bench.c $*-test $*-test.c
+clean: $(TARGETS:%=clean_thing_%)
 
 very-clean:
 	rm -rf $(data)
 	@$(MAKE) clean --no-print-directory
-
-test_all:
-	futhark test v1.fut --backend=$(backend)
-	futhark test v2.fut --backend=$(backend)
-	futhark test v3.fut --backend=$(backend)
-	futhark test v4.fut --backend=$(backend)
-	futhark test v5.fut --backend=$(backend)
-	futhark test v6.fut --backend=$(backend)
-
-bench_all:
-	@$(MAKE) run_benchmarks version=v1 --no-print-directory
-	@$(MAKE) run_benchmarks version=v2 --no-print-directory
-	@$(MAKE) run_benchmarks version=v3 --no-print-directory
-	@$(MAKE) run_benchmarks version=v4 --no-print-directory
-	@$(MAKE) run_benchmarks version=v5 --no-print-directory
-	@$(MAKE) run_benchmarks version=v6 --no-print-directory

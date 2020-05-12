@@ -27,13 +27,3 @@ let runBF [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   runBF P Q
-
--- ==
--- compiled random input { [131072][5]f32  [131072][5]f32 }
--- compiled random input { [131072][5]f32  [131072][5]f32 }
--- compiled random input { [524288][5]f32  [524288][5]f32 }
--- compiled random input { [1048576][5]f32 [1048576][5]f32 }
--- compiled random input { [2097152][5]f32 [2097152][5]f32 }
--- compiled random input { [4194304][5]f32 [4194304][5]f32 }
--- compiled random input { [8388608][5]f32 [8388608][5]f32 }
--- compiled random input { [8388608][5]f32 [16777216][5]f32 }
