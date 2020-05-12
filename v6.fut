@@ -87,22 +87,21 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     -- initialize the loop variables
     let stacks = replicate m 0i32
-    let Q_inds = iota m
-    let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
+    let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) GetPadValue)
     let ordered_all_knns = copy knns
 
     let res = -- main loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q) while (length leaf_indices > 0) do
 
       -- a. brute-force on previous leaves and ongoing queries
-      let knns = map3 (\ q_ind knn leaf_index ->
-                    bruteForce Q[q_ind] knn leaf_structure[leaf_index] leaf_index
-                  ) Q_inds knns leaf_indices
+      let knns = map3 (\ q knn leaf_index ->
+                    bruteForce q knn leaf_structure[leaf_index] leaf_index
+                  ) Q knns leaf_indices
 
       -- b. traverse-once to find the next leaves
-      let (leaf_indices, stacks) = unzip <| map4 (\ q_ind stack leaf_index wnnd ->
-                                            traverse_once height Q[q_ind] stack leaf_index wnnd tree_dims tree_meds global_lbs global_ubs
-                                          ) Q_inds stacks leaf_indices (map get_wnnd knns)
+      let (leaf_indices, stacks) = unzip <| map4 (\ q stack leaf_index wnnd ->
+                                            traverse_once height q stack leaf_index wnnd tree_dims tree_meds global_lbs global_ubs
+                                          ) Q stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
       let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
@@ -113,13 +112,23 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
                                 (map (\i ->   knns[i]) done_inds)
 
       -- e. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
-      let leaf_indices = gather1d cont_inds leaf_indices
-      let stacks =       gather1d cont_inds stacks
-      let Q_inds =       gather1d cont_inds Q_inds
-      let knns =         gather2d cont_inds knns
+      -- we want to recover cont_inds of knns, leaf_indices, stacks, Q_inds, Q
+      -- but we want to place them, not in the order that cont_inds are in now,
+      -- but in the order they will be in when we sort them according to leaves
+
+      -- 1. gather leaf_indices
+      let num_active = length cont_inds
+
+      let leaf_indices = gather1d cont_inds leaf_indices :> [num_active]i32
+
+      -- 3. finally, gather using this reordered cont_inds array
+      let stacks = gather1d cont_inds stacks
+      let Q_inds = gather1d cont_inds Q_inds
+      let knns = gather2d cont_inds knns
+      let Q = gather2d cont_inds Q
 
       -- finish iteration
-      in (ordered_all_knns, knns, leaf_indices, stacks, Q_inds)
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q)
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
     let finished_all_knns = unzip_matrix <| (.0) <| res
