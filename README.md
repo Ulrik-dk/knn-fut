@@ -6,7 +6,16 @@ Simple brute force algorithm
 #### v1
 buffer k-d tree-ish
 #### v2
-v1 but with strategic sorting
+adds sorting
+#### v3
+adds
+#### v4
+adds
+#### v5
+uses a more precise test
+#### v6
+stops sorting and uses the indirect array again, is faster in some cases. TODO: should use magic threshholds to determine whether to do brute-force, use sorting, etc.
+
 ## backends:
     c
     opencl
