@@ -20,7 +20,7 @@ let bruteForce [n][d][k] (q: [d]f32)
       then knn
       else update_knn knn (((leaf_index*n)+i), dist)
 
-let runBF [n][m][d] (P: [n][d]f32) (Q: [m][d]f32)
+let runBF [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let k = GetK
   let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) GetPadValue) :> *[m][k](i32,f32)
   in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix |> (.1)
