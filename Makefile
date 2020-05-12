@@ -34,7 +34,7 @@ run_test_%:
 test: $(TARGETS:%=run_test_%)
 
 run_bench_%:
-	futhark bench $*-bench.fut --backend=$(backend) --skip-compilation -r 3
+	futhark bench $*-bench.fut --backend=$(backend) --skip-compilation -r 3 --timeout=300
 bench: $(TARGETS:%=run_bench_%)
 
 clean_thing_%:
