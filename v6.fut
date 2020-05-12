@@ -63,8 +63,8 @@ let traverse_once [tree_size][tree_size_plus][d]
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
 
--- v1 but with v5-test
 let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
+
     -- pad the array of points
     let pad_elm = replicate d GetPadValue
     let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
@@ -130,13 +130,11 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   v6 GetLeafSizeLb GetK P Q |> (.1)
 
 -- ==
--- input @ data/test1.in
--- output @ data/test1.out
--- input @ data/test2.in
--- output @ data/test2.out
--- input @ data/test3.in
--- output @ data/test3.out
--- input @ data/test4.in
--- output @ data/test4.out
--- input @ data/test5.in
--- output @ data/test5.out
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [524288][5]f32  [524288][5]f32 }
+-- compiled random input { [1048576][5]f32 [1048576][5]f32 }
+-- compiled random input { [2097152][5]f32 [2097152][5]f32 }
+-- compiled random input { [4194304][5]f32 [4194304][5]f32 }
+-- compiled random input { [8388608][5]f32 [8388608][5]f32 }
+-- compiled random input { [8388608][5]f32 [16777216][5]f32 }

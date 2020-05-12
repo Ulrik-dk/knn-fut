@@ -20,19 +20,20 @@ let bruteForce [n][d][k] (q: [d]f32)
       then knn
       else update_knn knn (((leaf_index*n)+i), dist)
 
-entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
+let runBF [n][m][d] (P: [n][d]f32) (Q: [m][d]f32)
   let k = GetK
-  let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) f32.inf) :> *[m][k](i32,f32)
+  let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) GetPadValue) :> *[m][k](i32,f32)
   in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix |> (.1)
 
+entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
+  runBF P Q
+
 -- ==
--- input @ data/test1.in
--- output @ data/test1.out
--- input @ data/test2.in
--- output @ data/test2.out
--- input @ data/test3.in
--- output @ data/test3.out
--- input @ data/test4.in
--- output @ data/test4.out
--- input @ data/test5.in
--- output @ data/test5.out
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [524288][5]f32  [524288][5]f32 }
+-- compiled random input { [1048576][5]f32 [1048576][5]f32 }
+-- compiled random input { [2097152][5]f32 [2097152][5]f32 }
+-- compiled random input { [4194304][5]f32 [4194304][5]f32 }
+-- compiled random input { [8388608][5]f32 [8388608][5]f32 }
+-- compiled random input { [8388608][5]f32 [16777216][5]f32 }

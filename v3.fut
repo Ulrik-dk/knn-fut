@@ -30,7 +30,7 @@ let v3 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     -- initialize the loop variables
     let stacks = replicate m 0i32
-    let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) f32.inf)
+    let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) GetPadValue)
     let ordered_all_knns = copy knns
 
     -- sort the meta-data by leaf-indices
@@ -94,13 +94,11 @@ entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   v3 GetLeafSizeLb GetK P Q |> (.1)
 
 -- ==
--- input @ data/test1.in
--- output @ data/test1.out
--- input @ data/test2.in
--- output @ data/test2.out
--- input @ data/test3.in
--- output @ data/test3.out
--- input @ data/test4.in
--- output @ data/test4.out
--- input @ data/test5.in
--- output @ data/test5.out
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [131072][5]f32  [131072][5]f32 }
+-- compiled random input { [524288][5]f32  [524288][5]f32 }
+-- compiled random input { [1048576][5]f32 [1048576][5]f32 }
+-- compiled random input { [2097152][5]f32 [2097152][5]f32 }
+-- compiled random input { [4194304][5]f32 [4194304][5]f32 }
+-- compiled random input { [8388608][5]f32 [8388608][5]f32 }
+-- compiled random input { [8388608][5]f32 [16777216][5]f32 }
