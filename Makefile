@@ -1,7 +1,7 @@
-version = v5
+version = v6
 backend = opencl
 data = data/
-TARGETS = bf v1 v2 v3 v4 v5
+TARGETS = bf v1 v2 v3 v4 v5 v6
 TESTS = test1 test2 test3 test4 test5 test6
 
 setup:
@@ -29,9 +29,11 @@ compile_%:
 	futhark $(backend) $*-test.fut -w
 compile: $(TARGETS:%=compile_%)
 
+test:
+	futhark test $(version)-test.fut --backend=$(backend)
 run_test_%:
-	futhark test $*-test.fut --backend=$(backend)
-test: $(TARGETS:%=run_test_%)
+	@$(MAKE) test version=$* --no-print-directory
+tests: $(TARGETS:%=run_test_%)
 
 bench:
 	futhark bench $(version)-bench.fut --backend=$(backend) --skip-compilation -r 1 --timeout=180

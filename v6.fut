@@ -63,6 +63,9 @@ let traverse_once [tree_size][tree_size_plus][d]
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
 
+let sort_by_fst (arr: [](i32, i32)) (num_bits_to_sort: i32) =
+  radix_sort_int_by_key (.0) num_bits_to_sort i32.get_bit arr
+
 let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     -- pad the array of points
@@ -82,6 +85,8 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let global_lbs = global_lbs :> [size_promise][d]f32
     let global_ubs = global_ubs :> [size_promise][d]f32
 
+    let num_bits_to_sort = height + 2
+
     -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
 
@@ -90,8 +95,14 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) GetPadValue)
     let ordered_all_knns = copy knns
 
+    -- sort the meta-data by leaf-indices
+    -- since knns and stacks are all blank, we only need to sort Q and leaf_indices
+    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
+    let Q = gather2d sort_order Q
+    let Q_inds = gather1d sort_order <| iota m
+
     let res = -- main loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q) while (length leaf_indices > 0) do
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
 
       -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q knn leaf_index ->
@@ -121,6 +132,12 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       let leaf_indices = gather1d cont_inds leaf_indices :> [num_active]i32
 
+      -- 2. sort leaf_indices and reorder cont_inds according to this
+      let (leaf_indices, sort_order) = unzip
+          <| sort_by_fst (zip leaf_indices (iota num_active)) num_bits_to_sort
+
+      let cont_inds = gather1d sort_order cont_inds
+
       -- 3. finally, gather using this reordered cont_inds array
       let stacks = gather1d cont_inds stacks
       let Q_inds = gather1d cont_inds Q_inds
@@ -128,7 +145,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let Q = gather2d cont_inds Q
 
       -- finish iteration
-      in (ordered_all_knns, knns, leaf_indices, stacks, Q)
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
     let finished_all_knns = unzip_matrix <| (.0) <| res
