@@ -28,6 +28,7 @@ let traverse_once [tree_size][tree_size_plus][d]
                            (stack: i32)
                            (leaf_index: i32)
                            (wnnd: f32)
+                           (num_leaves: i32)
                            (tree_dims: [tree_size]i32)
                            (tree_meds: [tree_size]f32)
                            (lbs: [tree_size_plus][d]f32)
@@ -42,7 +43,7 @@ let traverse_once [tree_size][tree_size_plus][d]
 
   let (parent_index, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
-       (tree_index, stack, -1, h)
+       (tree_index, stack, num_leaves, h)
   while (node_index != 0) && (rec_node < 0) do
     let parent_index = getParent node_index
     let sibling_index = getSibling node_index in
@@ -58,8 +59,8 @@ let traverse_once [tree_size][tree_size_plus][d]
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
   let new_leaf =
-    if rec_node == -1 && parent_index == 0
-      then -1 -- we are done, we are at the root node and its second child has been visited
+    if rec_node == num_leaves && parent_index == 0
+      then num_leaves -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
 
@@ -76,6 +77,8 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- original_P_inds is used to put correct the knns indices in the end
     let height = get_height leaf_size (length padded_P)
     let (tree_dims, tree_meds, global_lbs, global_ubs, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
+
+    let num_leaves = length leaf_structure
 
     let size_promise = length tree_dims
     let tree_dims = tree_dims :> [size_promise]i32
@@ -100,9 +103,10 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
     let Q = gather2d sort_order Q
     let Q_inds = gather1d sort_order <| iota m
+    let num_active = length leaf_indices
 
     let res = -- main loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds, num_active) while (num_active > 0) do
 
       -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q knn leaf_index ->
@@ -111,7 +115,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- b. traverse-once to find the next leaves
       let (leaf_indices, stacks) = unzip <| map4 (\ q stack leaf_index wnnd ->
-                                            traverse_once height q stack leaf_index wnnd tree_dims tree_meds global_lbs global_ubs
+                                            traverse_once height q stack leaf_index wnnd num_leaves tree_dims tree_meds global_lbs global_ubs
                                           ) Q stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
@@ -145,7 +149,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let Q = gather2d cont_inds Q
 
       -- finish iteration
-      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds, length leaf_indices)
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
     let finished_all_knns = unzip_matrix <| (.0) <| res
