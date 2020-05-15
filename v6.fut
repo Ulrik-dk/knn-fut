@@ -118,8 +118,6 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
                                             traverse_once height q stack leaf_index wnnd num_leaves tree_dims tree_meds global_lbs global_ubs
                                           ) Q stacks leaf_indices (map get_wnnd knns)
 
-      -- c. partition so that the queries that finished come last
-      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
 
       -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns

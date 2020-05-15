@@ -148,15 +148,15 @@ let getQuerriedLeaf (h: i32) (ppl: i32) (q: f32) =
 
 -- i is the starting-index into the tree.
 let find_natural_leaf [tree_size][d]
-                      (i: i32) (q: [d]f32)
+                      (i: i32)
+                      (q: [d]f32)
                       (tree_dims: [tree_size]i32)
                       (tree_meds: [tree_size]f32) : i32 =
     let i = loop i while (i < tree_size) do
-    -- TODO: consider whether this comparator handles edge-cases optimally
       if (q[tree_dims[i]] > tree_meds[i])
         then getRightChild(i)
         else getLeftChild(i)
-    in i - tree_size
+    in i - tree_size --translate tree-index to leaf-structure-index
 
 let traverse_once [tree_size][d]
                            (h: i32)
