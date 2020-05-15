@@ -36,7 +36,7 @@ run_test_%:
 tests: $(TARGETS:%=run_test_%)
 
 bench:
-	futhark bench $(version)-bench.fut --backend=$(backend) --skip-compilation -r 1 --timeout=180
+	futhark bench $(version)-bench.fut --backend=$(backend) -r 1
 run_bench_%:
 	@$(MAKE) bench version=$* --no-print-directory
 benchs: $(TARGETS:%=run_bench_%)

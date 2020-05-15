@@ -176,7 +176,7 @@ let traverse_once [tree_size][d]
   let (parent_index, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
        (tree_index, stack, -1, h)
-  while (node_index != 0) && (rec_node < 0) do
+  while (node_index != 0) && (rec_node == -1) do
     let parent_index = getParent node_index in
     if getPackedInd stack level
     then -- sibling (second node) already visited, go up the tree
