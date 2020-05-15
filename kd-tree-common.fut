@@ -173,7 +173,7 @@ let traverse_once [tree_size][d]
 
   let tree_index = leaf_index + tree_size
 
-  let (parent_index, stack, rec_node, _) =
+  let (_, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
        (tree_index, stack, -1, h)
   while (node_index != 0) && (rec_node == -1) do
