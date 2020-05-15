@@ -28,7 +28,6 @@ let traverse_once [tree_size][tree_size_plus][d]
                            (stack: i32)
                            (leaf_index: i32)
                            (wnnd: f32)
-                           (num_leaves: i32)
                            (tree_dims: [tree_size]i32)
                            (tree_meds: [tree_size]f32)
                            (lbs: [tree_size_plus][d]f32)
@@ -116,7 +115,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- b. traverse-once to find the next leaves
       let (leaf_indices, stacks) = unzip <| map4 (\ q stack leaf_index wnnd ->
-                                            traverse_once height q stack leaf_index wnnd num_leaves tree_dims tree_meds global_lbs global_ubs
+                                            traverse_once height q stack leaf_index wnnd tree_dims tree_meds global_lbs global_ubs
                                           ) Q stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
