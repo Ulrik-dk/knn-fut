@@ -1,5 +1,5 @@
 let zip_inds [n] 't (arr: [n]t) : ([n](t, i32)) =
-  zip arr (indices arr)
+  zip arr (iota n)
 
 -- for functions that are general
 let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =

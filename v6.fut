@@ -43,8 +43,8 @@ let traverse_once [tree_size][tree_size_plus][d]
 
   let (_, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
-       (tree_index, stack, num_leaves, h)
-   while (node_index != 0) && (rec_node == num_leaves) do
+       (tree_index, stack, -1, h)
+   while (node_index != 0) && (rec_node == -1) do
     let parent_index = getParent node_index
     let sibling_index = getSibling node_index in
     if getPackedInd stack level
@@ -58,7 +58,7 @@ let traverse_once [tree_size][tree_size_plus][d]
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
   let new_leaf =
-    if rec_node == num_leaves
+    if rec_node == -1
       then num_leaves -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
@@ -139,7 +139,8 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       -- f. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
                                 (map (\i -> Q_inds[i]) done_inds)
-                                (map (\i ->   knns[i]) done_inds)
+                                  -- uncoalesced
+                                (map (\i -> knns[i]) done_inds)
 
       -- g. finally, gather the rest
       let Q_inds = gather1d cont_inds Q_inds
