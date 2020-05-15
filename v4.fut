@@ -1,28 +1,14 @@
-open import "lib/github.com/diku-dk/sorts/merge_sort"
-open import "lib/github.com/diku-dk/sorts/quick_sort"
-open import "lib/github.com/diku-dk/sorts/radix_sort"
-open import "lib/batch-merge-sort"
 open import "bf"
 open import "constants"
 open import "kd-tree-common"
 
-let sort_by_fst (arr: [](i32, i32)) (num_bits_to_sort: i32) =
-  radix_sort_int_by_key (.0) num_bits_to_sort i32.get_bit arr
-
 let v4 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-
     -- pad the array of points
-    let pad_elm = replicate d GetPadValue
-    let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
+    let (padded_P, leaf_size, num_leaves, height, num_tree_nodes, num_bounds) = pad P leaf_size_lb
 
-    -- get the height and build the balanced tree
     -- original_P_inds is used to put correct the knns indices in the end
-    let height = get_height leaf_size (length padded_P)
-    let (tree_dims, tree_meds, _, _, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
-
-    let size_promise = length tree_dims
-    let tree_dims = tree_dims :> [size_promise]i32
-    let tree_meds = tree_meds :> [size_promise]f32
+    let (tree_dims, tree_meds, _, _, leaf_structure, original_P_inds) =
+      build_balanced_tree padded_P num_leaves num_tree_nodes num_bounds height leaf_size
 
     let num_bits_to_sort = height + 2
 
@@ -34,7 +20,6 @@ let v4 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) GetPadValue)
     let ordered_all_knns = copy knns
 
-    -- sort the meta-data by leaf-indices
     -- since knns and stacks are all blank, we only need to sort Q and leaf_indices
     let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
     let Q = gather2d sort_order Q
@@ -57,7 +42,7 @@ let v4 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
 
       -- d. update the ordered_all_knns for the queries that have finished
-      let ordered_all_knns = scatter2D ordered_all_knns
+      let ordered_all_knns = scatter2d ordered_all_knns
                               (gather1d done_inds Q_inds)
                               (gather2d done_inds knns)
 
@@ -67,13 +52,11 @@ let v4 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       -- but in the order they will be in when we sort them according to leaves
 
       -- 1. gather leaf_indices
-      let num_active = length cont_inds
-
-      let leaf_indices = gather1d cont_inds leaf_indices :> [num_active]i32
+      let leaf_indices = gather1d cont_inds leaf_indices
 
       -- 2. sort leaf_indices and reorder cont_inds according to this
       let (leaf_indices, sort_order) = unzip
-          <| sort_by_fst (zip leaf_indices (iota num_active)) num_bits_to_sort
+          <| sort_by_fst (zip leaf_indices (indices leaf_indices)) num_bits_to_sort
 
       let cont_inds = gather1d sort_order cont_inds
 

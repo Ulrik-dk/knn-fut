@@ -16,14 +16,14 @@ let bruteForce [n][d][k] (q: [d]f32)
                          (leaf_index: i32)
                          : [k](i32, f32) =
   loop knn for i < n do
-    let dist = my_dist refs[i] q in
+    let dist = euclidian_distance refs[i] q in
     if dist >= knn[k-1].1
       then knn
       else update_knn knn (((leaf_index*n)+i), dist)
 
 let runBF [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =
   let k = GetK
-  let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) GetPadValue) :> *[m][k](i32,f32)
+  let knns = unflatten m k <| zip (replicate (m*k) i32.highest) (replicate (m*k) GetPadValue)
   in map2 (\q knn -> bruteForce q knn P 0) Q knns |> unzip_matrix |> (.1)
 
 entry main [n][m][d] (P: [n][d]f32) (Q: [m][d]f32) =

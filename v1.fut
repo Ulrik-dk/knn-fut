@@ -1,31 +1,23 @@
-open import "lib/batch-merge-sort"
 open import "bf"
 open import "constants"
 open import "kd-tree-common"
 
 let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
-
     -- pad the array of points
-    let pad_elm = replicate d GetPadValue
-    let (padded_P, leaf_size) = pad P pad_elm leaf_size_lb
+    let (padded_P, leaf_size, num_leaves, height, num_tree_nodes, num_bounds) = pad P leaf_size_lb
 
-    -- get the height and build the balanced tree
     -- original_P_inds is used to put correct the knns indices in the end
-    let height = get_height leaf_size (length padded_P)
-    let (tree_dims, tree_meds, _, _, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
-
-    let size_promise = length tree_dims
-    let tree_dims = tree_dims :> [size_promise]i32
-    let tree_meds = tree_meds :> [size_promise]f32
+    let (tree_dims, tree_meds, _, _, leaf_structure, original_P_inds) =
+      build_balanced_tree padded_P num_leaves num_tree_nodes num_bounds height leaf_size
 
     -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
 
     -- initialize the loop variables
     let stacks = replicate m 0i32
-    let Q_inds = iota m
     let knns = unflatten m k <| zip (replicate (k*m) (-1)) (replicate (k*m) GetPadValue)
     let ordered_all_knns = copy knns
+    let Q_inds = iota m
 
     let res = -- main loop
     loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
@@ -41,10 +33,10 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
                                           ) Q_inds stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
-      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
+      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (indices leaf_indices)
 
       -- d. update the ordered_all_knns for the queries that have finished
-      let ordered_all_knns = scatter2D ordered_all_knns
+      let ordered_all_knns = scatter2d ordered_all_knns
                               (gather1d done_inds Q_inds)
                               (gather2d done_inds knns)
 
