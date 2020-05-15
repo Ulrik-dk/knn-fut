@@ -1,3 +1,6 @@
+let zip_inds [n] 't (arr: [n]t) : ([n](t, i32)) =
+  zip arr (indices arr)
+
 -- for functions that are general
 let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =
   let acc = loop acc = 0 for i < d do

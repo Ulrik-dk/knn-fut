@@ -97,7 +97,7 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
     -- sort the meta-data by leaf-indices
     -- since knns and stacks are all blank, we only need to sort Q and leaf_indices
-    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
+    let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip_inds leaf_indices) num_bits_to_sort
     let Q = gather2d sort_order Q
     let Q_inds = sort_order
 
@@ -115,7 +115,7 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
                                           ) Q stacks leaf_indices (map get_wnnd knns)
 
       -- c. partition so that the queries that finished come last
-      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (iota <| length leaf_indices)
+      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == -1) (indices leaf_indices)
 
       -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
@@ -134,7 +134,7 @@ let v5 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- 2. sort leaf_indices and reorder cont_inds according to this
       let (leaf_indices, sort_order) = unzip
-          <| sort_by_fst (zip leaf_indices (iota num_active)) num_bits_to_sort
+          <| sort_by_fst (zip_inds leaf_indices) num_bits_to_sort
 
       let cont_inds = gather1d sort_order cont_inds
 

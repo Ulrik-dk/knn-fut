@@ -5,9 +5,10 @@ let update_knn [k] (knn: [k](i32,f32)) (elm: (i32,f32)) : [k](i32,f32) =
   (.0) <| loop (knn, elm) = (copy knn, elm) for j < k do
     if knn[j].1 < elm.1
       then (knn, elm)
-      else let tmp = knn[j]
-           let knn[j] = elm
-           in (knn, tmp)
+    else
+      let tmp = knn[j]
+      let knn[j] = elm
+      in (knn, tmp)
 
 let bruteForce [n][d][k] (q: [d]f32)
                          (knn: [k](i32,f32))

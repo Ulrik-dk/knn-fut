@@ -17,8 +17,8 @@ ins:
 	@futhark dataset -b --generate=[500][200]f32 --generate=[500][200]f32 > $(data)test2.in
 	@futhark dataset -b --generate=[5000][11]f32 --generate=[5000][11]f32 > $(data)test3.in
 	@futhark dataset -b --generate=[50000][3]f32 --generate=[50000][3]f32 > $(data)test4.in
-	@futhark dataset -b --generate=[1][5]f32 --generate=[500000][5]f32 > $(data)test5.in
-	@futhark dataset -b --generate=[500000][5]f32 --generate=[1][5]f32 > $(data)test6.in
+	@futhark dataset -b --generate=[500000][5]f32 --generate=[500000][5]f32 > $(data)test5.in
+	@futhark dataset -b --generate=[5][500000]f32 --generate=[5][500000]f32 > $(data)test6.in
 out_%:
 	./bf < $(data)$*.in > $(data)$*.out
 outs: $(TESTS:%=out_%)
