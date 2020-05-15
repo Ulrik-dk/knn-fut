@@ -43,7 +43,7 @@ let traverse_once [tree_size][tree_size_plus][d]
   let (parent_index, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
        (tree_index, stack, -1, h)
-  while (node_index != 0) && (rec_node < 0) do
+  while (node_index != 0) && (rec_node == -1) do
     let parent_index = getParent node_index
     let sibling_index = getSibling node_index in
     if getPackedInd stack level
@@ -58,7 +58,7 @@ let traverse_once [tree_size][tree_size_plus][d]
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
   let new_leaf =
-    if rec_node == -1 && parent_index == 0
+    if rec_node == -1 && parent_index == 0 -- does this condition make sense? is it superfluous?
       then -1 -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
