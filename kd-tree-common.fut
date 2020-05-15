@@ -1,5 +1,5 @@
 open import "util"
-open import "lib/batch-merge-sort"
+open import "batch-merge-sort"
 open import "constants"
 ---- for functions that are used often and specific for the knn algorithm
 
