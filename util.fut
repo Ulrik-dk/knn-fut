@@ -1,7 +1,7 @@
+-- for functions that are general
 let zip_inds [n] 't (arr: [n]t) : ([n](t, i32)) =
   zip arr (iota n)
 
--- for functions that are general
 let my_dist [d] (p: [d]f32) (q: [d]f32) : f32 =
   let acc = loop acc = 0 for i < d do
     let dif = (p[i] - q[i])
@@ -12,7 +12,7 @@ let gather1d [n] 't (inds: [n]i32) (src: []t) : [n]t =
   map (\i -> src[i]) inds
 
 let gather2d [n][d] 't (inds: [n]i32) (src: [][d]t) : [][d]t =
-  map (\ ind -> map (\j -> src[ind, j]) (iota d)) inds
+  map (\i -> map (\j -> src[i, j]) (iota d)) inds
 
 let scatter2D [m][k][n] 't (arr2D: *[m][k]t) (qinds: [n]i32) (vals2D: [n][k]t) : *[m][k]t =
   let nk = n*k

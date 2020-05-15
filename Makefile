@@ -1,7 +1,8 @@
 version = v6
+r = 1
 backend = opencl
 data = data/
-TARGETS = bf v1 v2 v3 v4 v5 v6
+TARGETS = bf v1 v2 v3 v4 v5 v6 v7
 TESTS = test1 test2 test3 test4 test5 test6
 
 setup:
@@ -42,7 +43,7 @@ run_test_%:
 tests: $(TARGETS:%=run_test_%)
 
 bench:
-	futhark bench $(version)-bench.fut --backend=$(backend) -r 1
+	futhark bench $(version)-bench.fut --backend=$(backend) -r $(r)
 run_bench_%:
 	@$(MAKE) bench version=$* --no-print-directory
 benchs: $(TARGETS:%=run_bench_%)

@@ -43,8 +43,8 @@ let traverse_once [tree_size][tree_size_plus][d]
 
   let (_, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
-       (tree_index, stack, num_leaves, h)
-   while (node_index != 0) && (rec_node == num_leaves) do
+       (tree_index, stack, -1, h)
+   while (node_index != 0) && (rec_node == -1) do
     let parent_index = getParent node_index
     let sibling_index = getSibling node_index in
     if getPackedInd stack level
@@ -58,7 +58,7 @@ let traverse_once [tree_size][tree_size_plus][d]
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
   let new_leaf =
-    if rec_node == num_leaves
+    if rec_node == -1
       then num_leaves -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
@@ -103,8 +103,9 @@ let v7 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let Q = gather2d sort_order Q
     let Q_inds = sort_order
 
-    let res = -- main loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
+
+    let (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) = -- first loop
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 50000) do
 
       -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q knn leaf_index ->
@@ -124,23 +125,69 @@ let v7 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       let num_active = length leaf_indices
       let num_done = reduce_comm (+) 0i32 <| map (\lind -> if lind == num_leaves then 1 else 0) leaf_indices
       let num_cont = num_active - num_done
-      let leaf_indices = take num_cont leaf_indices
 
       -- c. partition so that the queries that finished come last
-      let (cont_knns, done_knns) = split num_cont <| gather2d sort_order knns
-      let (cont_Q_inds, done_Q_inds) = split num_cont <| gather1d sort_order Q_inds
-
-      let done_knns = done_knns :> [num_done][k](i32, f32)
-      let done_Q_inds = done_Q_inds :> [num_done]i32
-      let ordered_all_knns = scatter2D ordered_all_knns done_Q_inds done_knns
+      let (cont_inds, done_inds) = split num_cont sort_order
 
       -- d. gather the stacks and Q's
-      let cont_inds = take num_cont sort_order
       let stacks = gather1d cont_inds stacks
       let Q = gather2d cont_inds Q
 
+      -- e. take leaf_indices
+      let leaf_indices = take num_cont leaf_indices
+
+      --TODO: Can f and g be optimized together?
+      -- f. update the ordered_all_knns for the queries that have finished
+      let ordered_all_knns = scatter2D ordered_all_knns
+                              (gather1d done_inds Q_inds)
+                              (gather2d done_inds knns)
+
+      -- g. finally, gather the rest
+      let Q_inds = gather1d cont_inds Q_inds
+      let knns = gather2d cont_inds knns
+
       -- finish iteration
-      in (ordered_all_knns, cont_knns, leaf_indices, stacks, Q, cont_Q_inds)
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
+
+    let res = -- main loop
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
+
+      -- a. brute-force on previous leaves and ongoing queries
+      let knns = map3 (\ q knn leaf_index ->
+                    bruteForce q knn leaf_structure[leaf_index] leaf_index
+                  ) Q knns leaf_indices
+
+      -- b. traverse-once to find the next leaves
+      let (leaf_indices, stacks) = unzip <| map4 (\ q stack leaf_index wnnd ->
+                                            traverse_once height q stack leaf_index wnnd num_leaves tree_dims tree_meds global_lbs global_ubs
+                                          ) Q stacks leaf_indices (map get_wnnd knns)
+
+      -- c. partition so that the queries that finished come last
+      let (done_inds, cont_inds) = partition (\i -> leaf_indices[i] == num_leaves) (indices leaf_indices)
+
+      -- d. update the ordered_all_knns for the queries that have finished
+      let ordered_all_knns = scatter2D ordered_all_knns
+                              (gather1d done_inds Q_inds)
+                              (gather2d done_inds knns)
+
+      -- e. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
+      -- we want to recover cont_inds of knns, leaf_indices, stacks, Q_inds, Q
+      -- but we want to place them, not in the order that cont_inds are in now,
+      -- but in the order they will be in when we sort them according to leaves
+
+      -- 1. gather leaf_indices
+      let num_active = length cont_inds
+      let leaf_indices = gather1d cont_inds leaf_indices :> [num_active]i32
+
+      -- 3. finally, gather using this reordered cont_inds array
+      let stacks = gather1d cont_inds stacks
+      let Q_inds = gather1d cont_inds Q_inds
+      let knns = gather2d cont_inds knns
+      let Q = gather2d cont_inds Q
+
+      -- finish iteration
+      in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
+
 
     -- change the knns p-indices so they point to their original indices and not the sorted ones
     let finished_all_knns = unzip_matrix <| (.0) <| res
