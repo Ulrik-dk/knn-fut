@@ -36,7 +36,7 @@ let v2 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- sort the meta-data by leaf-indices
     -- since knns and stacks are all blank, we only need to sort Q_inds and leaf_indices
     let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m))
-    let Q_inds = gather1d sort_order <| iota m
+    let Q_inds = sort_order
 
     let res = -- main loop
     loop (ordered_all_knns, knns, leaf_indices, stacks, Q_inds) while (length leaf_indices > 0) do
