@@ -128,19 +128,22 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       -- c. partition so that the queries that finished come last
       let (cont_inds, done_inds) = split num_cont sort_order
 
-      -- d. update the ordered_all_knns for the queries that have finished
-      let ordered_all_knns = scatter2D ordered_all_knns
-                                (map (\i -> Q_inds[i]) done_inds)
-                                (map (\i ->   knns[i]) done_inds)
+      -- d. gather the stacks and Q's
+      let stacks = gather1d cont_inds stacks
+      let Q = gather2d cont_inds Q
 
       -- e. take leaf_indices
       let leaf_indices = take num_cont leaf_indices
 
-      -- f. finally, gather the rest
-      let stacks = gather1d cont_inds stacks
+      --TODO: Can f and g be optimized together?
+      -- f. update the ordered_all_knns for the queries that have finished
+      let ordered_all_knns = scatter2D ordered_all_knns
+                                (map (\i -> Q_inds[i]) done_inds)
+                                (map (\i ->   knns[i]) done_inds)
+
+      -- g. finally, gather the rest
       let Q_inds = gather1d cont_inds Q_inds
       let knns = gather2d cont_inds knns
-      let Q = gather2d cont_inds Q
 
       -- finish iteration
       in (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds)
