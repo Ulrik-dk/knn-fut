@@ -40,7 +40,7 @@ let traverse_once [tree_size][tree_size_plus][d]
 
   let tree_index = leaf_index + tree_size
 
-  let (parent_index, stack, rec_node, _) =
+  let (_, stack, rec_node, _) =
   loop (node_index, stack, rec_node, level) =
        (tree_index, stack, i32.highest, h)
    while (node_index != 0) && (rec_node == i32.highest) do
@@ -53,7 +53,6 @@ let traverse_once [tree_size][tree_size_plus][d]
       --- Test if this or both
       if
         (special_test q wnnd lbs[sibling_index] ubs[sibling_index])
-        --((f32.abs (q[tree_dims[parent_index]] - tree_meds[parent_index])) < wnnd)
       then (parent_index, setPackedInd stack level 1, sibling_index, level)
       else (parent_index, setPackedInd stack level 0, rec_node, level-1)
 
@@ -77,8 +76,6 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let height = get_height leaf_size (length padded_P)
     let (tree_dims, tree_meds, global_lbs, global_ubs, leaf_structure, original_P_inds) = build_balanced_tree padded_P height leaf_size
 
-    let num_leaves = length leaf_structure
-
     let size_promise = length tree_dims
     let tree_dims = tree_dims :> [size_promise]i32
     let tree_meds = tree_meds :> [size_promise]f32
@@ -101,7 +98,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     -- since knns and stacks are all blank, we only need to sort Q and leaf_indices
     let (leaf_indices, sort_order) = unzip <| sort_by_fst (zip leaf_indices (iota m)) num_bits_to_sort
     let Q = gather2d sort_order Q
-    let Q_inds = gather1d sort_order <| iota m
+    let Q_inds = sort_order
 
     let num_active = m
 
