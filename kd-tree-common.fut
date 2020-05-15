@@ -188,7 +188,7 @@ let traverse_once [tree_size][d]
         else (parent_index, setPackedInd stack level 1, getSibling node_index, level)
 
   let new_leaf =
-    if rec_node == -1 && parent_index == 0
+    if rec_node == -1
       then -1 -- we are done, we are at the root node and its second child has been visited
       else find_natural_leaf rec_node q tree_dims tree_meds
   in (new_leaf, stack)
