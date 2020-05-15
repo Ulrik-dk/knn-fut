@@ -87,7 +87,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let global_lbs = global_lbs :> [size_promise][d]f32
     let global_ubs = global_ubs :> [size_promise][d]f32
 
-    let num_bits_to_sort = height + 4 --TODO LOWER
+    let num_bits_to_sort = height + 3
 
     -- find the initial leaves of the queries
     let leaf_indices = map (\q -> find_natural_leaf 0 q tree_dims tree_meds) Q
