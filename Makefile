@@ -1,5 +1,5 @@
-version = v6
-r = 1
+version = v7
+r = 5
 backend = opencl
 data = data/
 TARGETS = bf v1 v2 v3 v4 v5 v6 v7

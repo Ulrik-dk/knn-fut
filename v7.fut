@@ -25,9 +25,10 @@ let v7 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let Q = gather2d sort_order Q
     let Q_inds = sort_order
 
+    let num_leaves_f = f32.i32 num_leaves
     -- TODO: update the treshhold test
     let (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) = -- first loop
-    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 50000) do
+    loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while ((f32.i32 <| length leaf_indices ) / num_leaves_f >= GetMagicThreshhold) do
 
       -- a. brute-force on previous leaves and ongoing queries
       let knns = map3 (\ q knn leaf_index ->
