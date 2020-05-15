@@ -45,8 +45,8 @@ let v1 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
 
       -- d. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
-                                (map (\i -> Q_inds[i]) done_inds)
-                                (map (\i ->   knns[i]) done_inds)
+                              (gather1d done_inds Q_inds)
+                              (gather2d done_inds knns)
 
       -- e. keep only the ongoing parts of the partitioned arrays: Q, knns, leaf_indices, stacks
       let leaf_indices = gather1d cont_inds leaf_indices

@@ -103,6 +103,7 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
     let Q = gather2d sort_order Q
     let Q_inds = sort_order
 
+
     let res = -- main loop
     loop (ordered_all_knns, knns, leaf_indices, stacks, Q, Q_inds) while (length leaf_indices > 0) do
 
@@ -138,9 +139,8 @@ let v6 [n][m][d] (leaf_size_lb: i32) (k: i32) (P: [n][d]f32) (Q: [m][d]f32) =
       --TODO: Can f and g be optimized together?
       -- f. update the ordered_all_knns for the queries that have finished
       let ordered_all_knns = scatter2D ordered_all_knns
-                                (map (\i -> Q_inds[i]) done_inds)
-                                  -- uncoalesced
-                                (map (\i -> knns[i]) done_inds)
+                              (gather1d done_inds Q_inds)
+                              (gather2d done_inds knns)
 
       -- g. finally, gather the rest
       let Q_inds = gather1d cont_inds Q_inds
