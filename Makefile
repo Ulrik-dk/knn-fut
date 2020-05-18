@@ -1,7 +1,8 @@
 version = v7
-r = 3
+r = 1
 backend = opencl
 data = data/
+test_name = DEFAULT
 TARGETS = bf v1 v2 v3 v4 v5 v6 v7
 TESTS = test1 test2 test3 test4 test5 test6
 
@@ -43,9 +44,10 @@ run_test_%:
 tests: $(TARGETS:%=run_test_%)
 
 bench:
-	nvidia-smi &> results/$(version)-results.txt
-	futhark bench $(version)-bench.fut --backend=$(backend) -r $(r) &>> results/$(version)-results.txt
+	nvidia-smi &> results/$(test_name)/$(version)-results.txt
+	futhark bench $(version)-bench.fut --backend=$(backend) -r $(r) &>> results/$(test_name)/$(version)-results.txt
 run_bench_%:
+	@mkdir results &> /dev/null
 	@$(MAKE) bench version=$* --no-print-directory
 benchs: $(TARGETS:%=run_bench_%)
 
