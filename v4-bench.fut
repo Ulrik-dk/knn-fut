@@ -1,7 +1,9 @@
 -- ==
--- random compiled input { [40000][5]f32  [40000][5]f32 }
--- random compiled input { [80000][5]f32  [80000][5]f32 }
+-- random compiled input { [16384][5]f32  [16384][5]f32 }
+-- random compiled input { [32768][5]f32  [32768][5]f32 }
+-- random compiled input { [65532][5]f32  [65532][5]f32 }
 -- random compiled input { [131072][5]f32  [131072][5]f32 }
+-- random compiled input { [262144][5]f32  [262144][5]f32 }
 -- random compiled input { [524288][5]f32  [524288][5]f32 }
 -- random compiled input { [1048576][5]f32 [1048576][5]f32 }
 -- random compiled input { [2097152][5]f32 [2097152][5]f32 }
