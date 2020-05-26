@@ -81,8 +81,6 @@ let build_balanced_tree [n][d] (P: [n][d]f32)
       let values_indices = map (\i -> zip (map(\p -> p[dim_inds[i]]) my_segments[i]) segment_Pinds[i] ) <| iota segment_count
 
       -- the index is only a passenger, so the value we put in the neutral element does not matter
-      -- COSMIN: here (f32.highest, segment_len) are the elements by which mergeSorts
-      --         pads to a power of two: you need to make sure they are ordered at the end!
       let (sorted_values, sorted_Pinds) = unzip_matrix <| batch_merge_sort (f32.highest, segment_len)
                                                                 (\(a,i1) (b,i2) ->
                                                                   if a < b then true  else
@@ -114,7 +112,6 @@ let build_balanced_tree [n][d] (P: [n][d]f32)
 
     -- returns the tree and the reordered points, and their relation to their original indices
     let leaf_structure = unflatten_3d num_leaves leaf_size d (flatten reordered_P)
-
     let (leaf_structure_lbs, leaf_structure_ubs) =
                 unzip <|
                 map (\i ->
@@ -127,7 +124,6 @@ let build_balanced_tree [n][d] (P: [n][d]f32)
     let inds_of_leaf_bounds = map (+num_tree_nodes) <| iota num_leaves
     let global_lbs = scatter global_lbs inds_of_leaf_bounds leaf_structure_lbs
     let global_ubs = scatter global_ubs inds_of_leaf_bounds leaf_structure_ubs
-
     in (tree_dims, tree_meds, global_lbs, global_ubs, leaf_structure, original_P_inds)
 
 ----------- traversal ----------
