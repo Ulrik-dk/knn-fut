@@ -1,5 +1,5 @@
 version = v7
-r = 1
+r = 3
 backend = opencl
 data = data/
 test_name = please_specify_manually
