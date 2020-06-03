@@ -1,0 +1,59 @@
+# usage:
+# make         -- compiles the project.
+# make default -- recompiles tex files excluding figures, bibliography etc.
+# make all     -- recompiles the entire project.
+# make clean   -- removes all files that are generated from running 'make all'.
+
+.PHONY: default
+
+# compilation commands and flags
+quiet=-synctex=1 -interaction=nonstopmode
+flags=--shell-escape
+tex=./thesis.tex
+pdf=pdflatex $(flags)
+
+# file abbreviations
+ly=figures/ly/list_of_figures.txt
+fig=$(ly)
+title=thesis
+blg=$(title).blg
+bib=$(title).bib
+bbl=$(title).bbl
+msc=$(title).pdf
+
+default: clean_pdf $(msc)
+all:     clean_all $(msc)
+clean:   clean_all
+
+recompile:
+	$(MAKE) clean
+	$(MAKE) all
+	$(MAKE) $(msc)
+$(msc): $(ly) $(blg) $(bbl)
+	$(pdf) $(tex)
+	$(pdf) $(tex)
+$(blg): $(bib)
+	$(pdf) $(tex)
+	bibtex thesis
+$(bbl): $(bib) $(blg)
+$(fig): $(lytex)
+$(ly):  ./figures/ly/Makefile
+	cd ./figures/ly && $(MAKE) all
+
+clean_pdf:
+	rm -f ./$(msc)
+clean_all: clean_aux clean_figures clean_bibliography clean_minted
+clean_aux:
+	rm -rf ./*.log
+	rm -rf ./*.aux
+	rm -rf ./*.toc
+	rm -rf ./*.out
+	rm -rf ./*.synctex.gz
+	rm  -f ./thesis.pdf
+clean_figures: ./figures/ly/Makefile
+	cd ./figures/ly/ && $(MAKE) clean
+clean_bibliography:
+	rm -f $(blg)
+	rm -f $(bbl)
+clean_minted:
+	rm -rf ./_minted-thesis
