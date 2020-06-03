@@ -1,5 +1,5 @@
 backend = opencl
-n = 10000000
+n = 1000000
 d = 5
 TARGETS = qualitative_bounds_traversal qualitative_median_traversal
 
