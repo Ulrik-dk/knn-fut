@@ -1,17 +1,17 @@
 version = v7
-r = 3
+r = 1
 backend = opencl
 data = data/
-test_name = please_specify_manually
+test_name = PLEASE_SPECIFY_test_name_MANUALLY
 TARGETS = bf v1 v2 v3 v4 v5 v6 v7
 TESTS = test1 test2 test3 test4 test5 test6
 
-setup:
+setup_tests:
 	@$(MAKE) very-clean --no-print-directory
 	@$(MAKE) compile --no-print-directory
 	@$(MAKE) ins --no-print-directory
 	@$(MAKE) outs --no-print-directory
-	@echo "You can now type 'make test' or 'make fut-test' or 'make bench'"
+	@echo "You can now type 'make tests' or 'make fut-test'"
 ins:
 	@rm -rf data
 	@mkdir data &> /dev/null
@@ -44,7 +44,7 @@ run_test_%:
 tests: $(TARGETS:%=run_test_%)
 
 bench:
-	nvidia-smi &> results/$(test_name)/$(version)-results.txt
+	nvidia-smi
 	futhark bench $(version)-bench.fut --backend=$(backend) -r $(r) &>> results/$(test_name)/$(version)-results.txt
 run_bench_%:
 	@$(MAKE) bench version=$* --no-print-directory
