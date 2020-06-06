@@ -1,3 +1,4 @@
+-- This file's content is not authored by me (Ulrik), but is a malplaced library.
 let log2 (n: i32) : i32 =
   let r = 0
   let (r, _) = loop (r,n) while 1 < n do
