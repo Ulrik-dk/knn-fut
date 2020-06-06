@@ -11,7 +11,7 @@ setup_tests:
 	@$(MAKE) compile --no-print-directory
 	@$(MAKE) ins --no-print-directory
 	@$(MAKE) outs --no-print-directory
-	@echo "You can now type 'make tests' or 'make fut-test'"
+	@echo "You can now type 'make tests'"
 ins:
 	@rm -rf data
 	@mkdir data &> /dev/null
@@ -31,14 +31,8 @@ compile_%:
 	futhark $(backend) $*-test.fut -w
 compile: $(TARGETS:%=compile_%)
 
-fut_test:
-	futhark test $(version)-test.fut --backend=$(backend)
-run_fut_test_%:
-	@$(MAKE) fut_test version=$* --no-print-directory
-fut_tests: $(TARGETS:%=run_fut_test_%)
-
 test:
-	futhark bench $(version)-test.fut --backend=$(backend) -r 1
+	futhark test $(version)-test.fut --backend=$(backend)
 run_test_%:
 	@$(MAKE) test version=$* --no-print-directory
 tests: $(TARGETS:%=run_test_%)
