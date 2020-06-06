@@ -2,36 +2,21 @@
 knn in futhark
 ## versions:
 #### bf
-Simple brute force algorithm
+brute force algorithm
 #### v1
-buffer k-d tree-ish
+initial kd-tree version
 #### v2
-adds sorting
+sorts query metadata
 #### v3
-adds
+sorts queries as well
 #### v4
-adds
+optimizes radix-sort a bit
 #### v5
-uses a more precise test
+uses the boundary-test rather than median-test for traversal
 #### v6
-stops sorting and uses the indirect array again, is faster in some cases. TODO: should use magic threshholds to determine whether to do brute-force, use sorting, etc.
+combines partitioning and sorting in the code
+#### v7
+uses a treshhold to stop sorting after a certain fraction of active queries to leaves
 
-## backends:
-    c
-    opencl
-## how to
-#### setup
-    make setup
-#### main commands
-    make test version={VERSION} backend={BACKEND}
-    make bench version={VERSION} backend={BACKEND}
-defaults are v1 and c
-#### other commands
-    make clean
-    make very-clean
-very-clean also removes data/
-
-    make manual-bench version={VERSION} backend={BACKEND}
-
-#### make-todos:
-it would be nice for the makefile to just automatically detect input and outputs from the data/ folder, so the test-data is defined in just one place
+## how to:
+  see the Makefile for usage
