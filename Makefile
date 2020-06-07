@@ -1,5 +1,5 @@
 version = v7
-r = 1
+r = 3
 backend = opencl
 data = data/
 test_name = PLEASE_SPECIFY_test_name_MANUALLY
@@ -8,7 +8,7 @@ TESTS = test1 test2 test3 test4 test5 test6
 
 setup_tests:
 	@$(MAKE) very-clean --no-print-directory
-	@$(MAKE) compile --no-print-directory
+	@$(MAKE) compile_bf --no-print-directory
 	@$(MAKE) ins --no-print-directory
 	@$(MAKE) outs --no-print-directory
 	@echo "You can now type 'make tests'"
