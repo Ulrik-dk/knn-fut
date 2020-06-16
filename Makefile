@@ -3,7 +3,7 @@ r = 3
 backend = opencl
 data = data/
 test_name = PLEASE_SPECIFY_test_name_MANUALLY
-TARGETS = bf v1 v2 v3 v4 v5 v6 v7
+TARGETS = bf v7
 TESTS = test1 test2 test3 test4 test5 test6
 
 setup_tests:
