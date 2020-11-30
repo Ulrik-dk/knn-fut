@@ -1,5 +1,5 @@
 # knn-fut
-knn in futhark, mentioned at: https://futhark-lang.org/docs.html, where the report is also release.
+knn in futhark, mentioned at: https://futhark-lang.org/docs.html, where the report is also released.
 ## versions:
 #### bf
 brute force algorithm
